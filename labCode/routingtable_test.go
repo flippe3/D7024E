@@ -5,6 +5,10 @@ import (
 	"testing"
 )
 
+func d7024e() {
+  fmt.Println("HELLO BITCHES")
+}
+
 func TestRoutingTable(t *testing.T) {
 	rt := NewRoutingTable(NewContact(NewKademliaID("FFFFFFFF00000000000000000000000000000000"), "localhost:8000"))
 

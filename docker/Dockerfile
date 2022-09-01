@@ -1,5 +1,11 @@
 FROM alpine:latest
 
+FROM golang:1.18-alpine
+
+RUN go mod init
+
+RUN go build ../labCode/
+
 # Add the commands needed to put your compiled go binary in the container and
 # run it when the container starts.
 #
@@ -10,4 +16,5 @@ FROM alpine:latest
 # same directory, you need to ensure the image you build gets the name
 # "kadlab", which you do by using the following command:
 #
+
 # $ docker build . -t kadlab
