@@ -2,9 +2,13 @@ FROM alpine:latest
 
 FROM golang:1.18-alpine
 
-RUN go mod init
+WORKDIR /home 
 
-RUN go build ../labCode/
+RUN go build -o output labCode/*.go
+
+#COPY ../labCode/bucket.go ./
+
+#RUN go mod download
 
 # Add the commands needed to put your compiled go binary in the container and
 # run it when the container starts.
