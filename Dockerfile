@@ -4,11 +4,13 @@ FROM golang:1.18-alpine
 
 WORKDIR /home 
 
-RUN go build -o output labCode/*.go
+COPY labCode/ .
 
-#COPY ../labCode/bucket.go ./
+# RUN go mod download
 
-#RUN go mod download
+RUN go build -o output *.go
+
+CMD ["./output"]
 
 # Add the commands needed to put your compiled go binary in the container and
 # run it when the container starts.

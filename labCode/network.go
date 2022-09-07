@@ -1,6 +1,7 @@
 package d7024e
 
 type Network struct {
+  
 }
 
 func Listen(ip string, port int) {
