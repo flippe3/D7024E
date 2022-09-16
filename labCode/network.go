@@ -1,8 +1,9 @@
 package d7024e
 
 type Network struct {
-  
 }
+
+// The functions in this file are primitive
 
 func Listen(ip string, port int) {
 	// TODO

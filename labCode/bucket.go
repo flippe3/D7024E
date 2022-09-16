@@ -4,9 +4,12 @@ import (
 	"container/list"
 )
 
+const bucketSize = 20
 
 // bucket definition
 // contains a List
+
+// Front of list is most recently seen
 type bucket struct {
 	list *list.List
 }

@@ -9,9 +9,12 @@ import (
 const IDLength = 20
 
 // type definition of a KademliaID
+// Most significant byte is lowest index
 type KademliaID [IDLength]byte
 
 // NewKademliaID returns a new instance of a KademliaID based on the string input
+
+// Assumes that the data is hashed by SHA-1
 func NewKademliaID(data string) *KademliaID {
 	decoded, _ := hex.DecodeString(data)
 
@@ -25,6 +28,8 @@ func NewKademliaID(data string) *KademliaID {
 
 // NewRandomKademliaID returns a new instance of a random KademliaID,
 // change this to a better version if you like
+
+// Used to join network
 func NewRandomKademliaID() *KademliaID {
 	newKademliaID := KademliaID{}
 	for i := 0; i < IDLength; i++ {
