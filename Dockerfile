@@ -10,7 +10,7 @@ COPY labCode/ .
 
 RUN go build -o output *.go
 
-CMD ["./output"]
+# CMD ["./output"]
 
 # Add the commands needed to put your compiled go binary in the container and
 # run it when the container starts.
