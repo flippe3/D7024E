@@ -1,0 +1,1 @@
+sudo docker exec -ti d7024e-kademliaNodes-1 ping d7024e-kademliaNodes-2
