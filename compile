@@ -1,0 +1,4 @@
+sudo docker compose down
+./build
+sudo docker compose up -d
+sudo docker exec -it d7024e-bootstrapNode-1 ./output

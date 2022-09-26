@@ -7,8 +7,8 @@
 
 version: "3"
 services:
-  bootstrapNode:
-    image: kadlab:latest
+  bootstrapNodeMaster:
+    image: kadlab:run
     stdin_open: true
     tty: true
     deploy:
@@ -18,15 +18,15 @@ services:
         max_attempts: 3
         window: 10s
     networks:
-      - kademlia_network
-  kademliaNodes:
-    depends_on: [bootstrapNode]
-    image: kadlab:latest # Make sure your Docker image has this name.
+      - kademlia_network_master
+  kademliaNodesMaster:
+    depends_on: [bootstrapNodeMaster]
+    image: kadlab:run # Make sure your Docker image has this name.
     stdin_open: true
     tty: true
     deploy:
       mode: replicated
-      replicas: 2
+      replicas: 50
 #        resources:
 #           limits:
 #              cpus: "0.1"
@@ -39,9 +39,9 @@ services:
 #    ports:
 #      - "5000:80"
     networks:
-      - kademlia_network
+      - kademlia_network_master
 
 networks:
-  kademlia_network:
+  kademlia_network_master:
     external: true
 

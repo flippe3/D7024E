@@ -46,10 +46,6 @@ func (routingTable *RoutingTable) FindClosestContacts(target *KademliaID, count 
 
 	candidates.Sort()
 
-	if count > candidates.Len() {
-		count = candidates.Len()
-	}
-
 	return candidates.GetContacts(count)
 }
 
@@ -65,4 +61,15 @@ func (routingTable *RoutingTable) getBucketIndex(id *KademliaID) int {
 	}
 
 	return IDLength*8 - 1
+}
+
+// Returns lowest non-empty bucket index with EXCLUSIVE respect to the list contacts
+func (routingTable *RoutingTable) LowestNonEmptyBucketIndex(contacts []Contact) int {
+	lowest := IDLength*8 - 1
+	for _, contact := range contacts {
+		if lowest > routingTable.getBucketIndex(contact.ID) {
+			lowest = routingTable.getBucketIndex(contact.ID)
+		}
+	}
+	return lowest
 }

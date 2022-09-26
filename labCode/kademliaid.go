@@ -13,7 +13,6 @@ const IDLength = 20
 type KademliaID [IDLength]byte
 
 // NewKademliaID returns a new instance of a KademliaID based on the string input
-
 // Assumes that the data is hashed by SHA-1
 func NewKademliaID(data string) *KademliaID {
 	decoded, _ := hex.DecodeString(data)
