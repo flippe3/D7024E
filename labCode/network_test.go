@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 )
 
@@ -16,6 +17,12 @@ func TestNetworkHandleConnection(t *testing.T) {
 	kademlia := Kademlia{}
 	fmt.Print(kademlia)
 	kademlia.Join()
+	// Make sure bucket with index 0 is empty at least once
+	var i int64 = 0
+	for ; kademlia.network.routingTable.LowestNonEmptyBucketIndex() == 0; i++ {
+		rand.Seed(i)
+		kademlia.Join()
+	}
 	// listener, err := net.Listen("tcp", ":81")
 	// if err != nil {
 	// 	t.Errorf("Can't start a tcp listener on port 81: %s", err)

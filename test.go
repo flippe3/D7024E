@@ -18,4 +18,5 @@ func main() {
 
 	v := []int{1, 2}
 	fmt.Println(slices.Contains(v, 3))
+
 }

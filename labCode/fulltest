@@ -1,0 +1,8 @@
+sudo docker rm -f testMaster
+sudo docker compose -f ../docker-compose-master.yml down
+sudo docker build -f ../DockerfileRun -t kadlab:run .
+sudo docker compose -f ../docker-compose-master.yml up -d
+sudo docker rm -f d7024e-bootstrapNodeMaster-1
+
+go test -coverprofile=coverage.out
+go tool cover -html=coverage.out -o coverage.html

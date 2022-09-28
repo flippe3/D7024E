@@ -74,8 +74,10 @@ func (network *Network) HandleConnection(conn net.Conn, dataMap map[string]strin
 		// SendPing 🏓
 		// Add id and ip to routing table
 		// returns my id and ip COMMA SEPERATED :3
-		var inp = strings.Split(string(b), ",")
-		network.CheckAliveAddContact(NewContact(NewKademliaID(inp[1]), inp[2]))
+
+		// Commenting out these 2 lines below because they lead to infinite pings
+		//var inp = strings.Split(string(b), ",")
+		//network.CheckAliveAddContact(NewContact(NewKademliaID(inp[1]), inp[2]))
 	} else if string([]rune(inp)[0]) == "c" {
 		// FindContact 👷‍♀️
 		// returns that contacts nearest 4 contacts from my routing table
@@ -159,8 +161,11 @@ func (network *Network) SendPingMessage(contact *Contact) (response bool) {
 		return false
 	} else {
 		network.CheckAliveAddContact(*contact) // Update routing table
-		strMessage := "p," + network.routingTable.me.ID.String() + "," + network.routingTable.me.Address
-		conn.Write([]byte(strMessage))
+
+		// Commenting out these 2 lines below because they lead to infinite pings
+		//strMessage := "p," + network.routingTable.me.ID.String() + "," + network.routingTable.me.Address
+		//conn.Write([]byte(strMessage))
+
 		conn.Close()
 		return true
 	}
@@ -186,12 +191,6 @@ func (network *Network) SendFindContactMessage(contact *Contact, target *Kademli
 			contacts := []Contact{}
 			for i := 0; i < len(bArr); i = i + 2 {
 				contacts = append(contacts, NewContact(NewKademliaID(bArr[i]), bArr[i+1]))
-			}
-			for _, contact := range contacts {
-				if contact.ID.Equals(network.routingTable.me.ID) {
-					continue // Ignore self
-				}
-				network.CheckAliveAddContact(contact) // Update routing table
 			}
 			fmt.Println("SendFindContactMessage to ", contact.String(), "with target: ", target.String(), ", found", len(contacts), "contacts: ", ContactsString(contacts))
 			return contacts, nil

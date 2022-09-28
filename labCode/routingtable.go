@@ -64,12 +64,11 @@ func (routingTable *RoutingTable) getBucketIndex(id *KademliaID) int {
 }
 
 // Returns lowest non-empty bucket index with EXCLUSIVE respect to the list contacts
-func (routingTable *RoutingTable) LowestNonEmptyBucketIndex(contacts []Contact) int {
-	lowest := IDLength*8 - 1
-	for _, contact := range contacts {
-		if lowest > routingTable.getBucketIndex(contact.ID) {
-			lowest = routingTable.getBucketIndex(contact.ID)
+func (routingTable *RoutingTable) LowestNonEmptyBucketIndex() int {
+	for i, bucket := range routingTable.buckets {
+		if bucket.Len() != 0 {
+			return i
 		}
 	}
-	return lowest
+	return IDLength*8 - 1
 }
