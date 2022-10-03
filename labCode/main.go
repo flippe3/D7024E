@@ -1,30 +1,27 @@
 package main
 
 import (
-	"bufio"
-	"math/rand"
-	"os"
-	"time"
+	"net"
 )
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-	kademlia := Kademlia{}
+	kademlia := Kademlia{dataMap: make(map[string]string)}
 	kademlia.Join()
-	kademlia.network.Listen(kademlia.dataMap)
+	exit := make(chan int)
+	go CliParser(&kademlia, exit)
+	RunKademlia(&kademlia, exit)
+}
 
-	reader := bufio.NewReader(os.Stdin)
+func RunKademlia(kademlia *Kademlia, exit chan int) {
+	chConn := make(chan net.Conn)
+	go kademlia.network.Listen(kademlia.dataMap, chConn)
 	for {
-		switch text, _ := reader.ReadString('\n'); text {
-		case "join\n":
-
-		case "put\n":
-
-		case "get\n":
-
-		case "exit\n":
-
+		select {
+		case conn := <-chConn:
+			kademlia.network.HandleConnection(conn, kademlia.dataMap)
+			conn.Close()
+		case <-exit:
+			return
 		}
 	}
-
 }

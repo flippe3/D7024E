@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"regexp"
@@ -30,21 +31,19 @@ func GetMyIP() (address string) {
 }
 
 // Listens for all incoming traffic on port 81
-func (network *Network) Listen(dataMap map[string]string) {
+func (network *Network) Listen(dataMap map[string]string, chConn chan net.Conn) {
 	listener, err := net.Listen("tcp", ":81")
 	if err != nil {
 		fmt.Println("Error occured while trying to listen: ", err)
 	} else {
-		fmt.Println("Listening on ", listener.Addr().String())
-	}
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			fmt.Println("Error occured while trying to accept connection: ", err)
-		} else {
-			network.HandleConnection(conn, dataMap)
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				fmt.Println("Error occured while trying to accept connection: ", err)
+			} else {
+				chConn <- conn
+			}
 		}
-		conn.Close()
 	}
 }
 
@@ -66,7 +65,7 @@ func (network *Network) HandleConnection(conn net.Conn, dataMap map[string]strin
 	if string([]rune(inp)[0]) == "j" {
 		// Join 🤗
 		// Sends back my id and ip COMMA SEPERATED :)
-		strMsg := network.routingTable.me.ID.String() + "," + network.routingTable.me.Address
+		strMsg := network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + ","
 		fmt.Println(strMsg)
 		conn.Write([]byte(strMsg))
 
@@ -83,17 +82,15 @@ func (network *Network) HandleConnection(conn net.Conn, dataMap map[string]strin
 		// returns that contacts nearest 4 contacts from my routing table
 		// Expects inp[3] to be targetID
 		var inp = strings.Split(string(b), ",")
-		network.CheckAliveAddContact(NewContact(NewKademliaID(inp[1]), inp[2]))
-		getClosestFour := network.routingTable.FindClosestContacts(NewKademliaID(inp[3]), 4)
 
+		network.CheckAliveAddContact(NewContact(NewKademliaID(inp[1]), inp[2]))
+
+		getClosestFour := network.routingTable.FindClosestContacts(NewKademliaID(inp[3]), 4)
 		// Create the message
 		var strMsg string
-		for i, k := range getClosestFour {
+		for _, k := range getClosestFour {
 			contactArr := strings.Split(k.String(), "\"")
-			strMsg += contactArr[1] + "," + contactArr[3]
-			if i != len(getClosestFour)-1 {
-				strMsg += ","
-			}
+			strMsg += contactArr[1] + "," + contactArr[3] + ","
 		}
 		fmt.Println("Looking for closest contacts to ID: ", NewKademliaID(inp[3]), ", found : ", strMsg)
 		conn.Write([]byte(strMsg))
@@ -102,33 +99,31 @@ func (network *Network) HandleConnection(conn net.Conn, dataMap map[string]strin
 		// Look for the data in dataMap
 		// ex: nodeid,nodeip,hash
 		var inp = strings.Split(string(b), ",")
-		network.CheckAliveAddContact(NewContact(NewKademliaID(inp[1]), inp[2]))
 
+		network.CheckAliveAddContact(NewContact(NewKademliaID(inp[1]), inp[2]))
 		data, ok := dataMap[inp[3]]
-		// TODO: This needs to send back something saying its found or not found
-		// the data.
 		if ok {
-			conn.Write([]byte(dataMap[data]))
+			fmt.Println("Found data: ", data)
+			conn.Write([]byte(data + ","))
 		} else {
 			getClosestFour := network.routingTable.FindClosestContacts(NewKademliaID(inp[3]), 4)
-
-			strMsg := network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + ","
-			for i, k := range getClosestFour {
-				strMsg += k.String()
-				if i != len(getClosestFour)-1 {
-					strMsg += ","
-				}
+			// Create the message
+			var strMsg string
+			for _, k := range getClosestFour {
+				contactArr := strings.Split(k.String(), "\"")
+				strMsg += contactArr[1] + "," + contactArr[3] + ","
 			}
+			fmt.Println("Looking for closest contacts to ID: ", NewKademliaID(inp[3]), ", found : ", strMsg)
 			conn.Write([]byte(strMsg))
 		}
-
 	} else if string([]rune(inp)[0]) == "s" {
 		// StoreMessage 🚛
 		var inp = strings.Split(string(b), ",")
-		network.CheckAliveAddContact(NewContact(NewKademliaID(inp[1]), inp[2]))
 
-		h := sha1.New()
-		hash := string(h.Sum([]byte(inp[3])))
+		network.CheckAliveAddContact(NewContact(NewKademliaID(inp[1]), inp[2]))
+		r := sha1.Sum([]byte(inp[3]))
+		hash := hex.EncodeToString(r[:])
+		fmt.Println("Storing data ", inp[3], " with hash: ", hash)
 		dataMap[hash] = inp[3]
 	}
 }
@@ -179,7 +174,7 @@ func (network *Network) SendFindContactMessage(contact *Contact, target *Kademli
 		return nil, fmt.Errorf("3No response from " + contact.String())
 	} else {
 		network.CheckAliveAddContact(*contact) // Update routing table
-		messageStr := "c," + network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + "," + target.String()
+		messageStr := "c," + network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + "," + target.String() + ","
 		_, writeErr := conn.Write([]byte(messageStr))
 		if writeErr != nil {
 			return nil, writeErr
@@ -189,7 +184,7 @@ func (network *Network) SendFindContactMessage(contact *Contact, target *Kademli
 			conn.Close()
 			bArr := strings.Split(string(b), ",")
 			contacts := []Contact{}
-			for i := 0; i < len(bArr); i = i + 2 {
+			for i := 0; i < len(bArr)-1; i = i + 2 {
 				contacts = append(contacts, NewContact(NewKademliaID(bArr[i]), bArr[i+1]))
 			}
 			fmt.Println("SendFindContactMessage to ", contact.String(), "with target: ", target.String(), ", found", len(contacts), "contacts: ", ContactsString(contacts))
@@ -198,12 +193,48 @@ func (network *Network) SendFindContactMessage(contact *Contact, target *Kademli
 	}
 }
 
-// d (Has to be comma seperated)
-func (network *Network) SendFindDataMessage(contact *Contact, hash string) {
-	// TODO
+// d (Has to be comma seperated) (string, []Contact, error)
+func (network *Network) SendFindDataMessage(contact *Contact, hash string) (string, []Contact, error) {
+	conn, connErr := net.DialTimeout("tcp", contact.Address+":81", 1e6) // TTL: 1 ms
+	if connErr != nil {
+		return "", nil, fmt.Errorf("4No response from " + contact.String())
+	} else {
+		network.CheckAliveAddContact(*contact) // Update routing table
+		messageStr := "d," + network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + "," + hash + ","
+		_, writeErr := conn.Write([]byte(messageStr))
+		if writeErr != nil {
+			return "", nil, writeErr
+		} else {
+			b := make([]byte, 255)
+			conn.Read(b)
+			conn.Close()
+			bArr := strings.Split(string(b), ",")
+			if len(bArr) == 2 {
+				fmt.Println("SendFindDataMessage to ", contact.String(), "with target: ", hash, ", found the data ", bArr[0])
+				return bArr[0], nil, nil
+			} else {
+				contacts := []Contact{}
+				for i := 0; i < len(bArr)-1; i = i + 2 {
+					contacts = append(contacts, NewContact(NewKademliaID(bArr[i]), bArr[i+1]))
+				}
+				fmt.Println("SendFindDataMessage to ", contact.String(), "with target: ", hash, ", found", len(contacts), "contacts: ", ContactsString(contacts))
+				return "", contacts, nil
+			}
+		}
+	}
 }
 
 // s
-func (network *Network) SendStoreMessage(data []byte) {
-	// TODO
+func (network *Network) SendStoreMessage(contact *Contact, data string) {
+	conn, connErr := net.DialTimeout("tcp", contact.Address+":81", 1e6) // TTL: 1 ms
+	if connErr != nil {
+		fmt.Println("5No response from " + contact.String())
+	} else {
+		network.CheckAliveAddContact(*contact) // Update routing table
+		messageStr := "s," + network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + "," + data + ","
+		_, writeErr := conn.Write([]byte(messageStr))
+		if writeErr != nil {
+			fmt.Println("WriteError to "+contact.String(), " while trying to write ", data)
+		}
+	}
 }

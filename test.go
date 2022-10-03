@@ -1,10 +1,10 @@
 package main
 
 import (
+	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-
-	"golang.org/x/exp/slices"
+	"strings"
 )
 
 func main() {
@@ -16,7 +16,13 @@ func main() {
 	fmt.Printf("%T\n", s)
 	fmt.Println(s)
 
-	v := []int{1, 2}
-	fmt.Println(slices.Contains(v, 3))
-
+	xd := []byte{0}
+	fmt.Println(string(xd))
+	inp := "hahaha     "
+	fmt.Println([]byte(inp))
+	inp, _, _ = strings.Cut(inp, " ")
+	fmt.Println(len(inp))
+	q := sha1.Sum([]byte("hahaha"))
+	q2 := hex.EncodeToString(q[:])
+	fmt.Println(q2)
 }

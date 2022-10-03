@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
 	"net"
@@ -36,7 +37,7 @@ func (kademlia *Kademlia) Join() {
 		if connErr != nil {
 			continue
 		} else {
-			_, writeErr := conn.Write([]byte("j"))
+			_, writeErr := conn.Write([]byte("j,"))
 			if writeErr != nil {
 				fmt.Println("Failed to send join message", writeErr)
 			}
@@ -53,9 +54,8 @@ func (kademlia *Kademlia) Join() {
 			fmt.Println("Adding bootstrapping contact: ", bootstrappingContact.String())
 			routingTable.AddContact(NewContact(NewKademliaID(bArr[0]), bArr[1]))
 			fmt.Println("Looked up following contacts when looking for self: ", ContactsString(kademlia.LookupContact(routingTable.me.ID)))
-			lowestNonEmptyIndex := kademlia.network.routingTable.LowestNonEmptyBucketIndex()
 			fmt.Println("Calculated the following kademliaIDs to look up when filling buckets: ")
-			idList := kademlia.FillBuckets(lowestNonEmptyIndex)
+			idList := kademlia.FillBuckets()
 			for _, id := range idList {
 				fmt.Println(id.String())
 			}
@@ -67,9 +67,8 @@ func (kademlia *Kademlia) Join() {
 	}
 }
 
-// -------------------- CREATE UNIT TEST --------------------
 // Fills buckets that are of higher index than the lowest non empty
-func (kademlia *Kademlia) FillBuckets(lowestNonEmptyIndex int) []KademliaID {
+func (kademlia *Kademlia) FillBuckets() []KademliaID {
 	var prefixOnes []byte
 	var invertedBit []byte
 	var suffixOnes []byte
@@ -81,7 +80,7 @@ func (kademlia *Kademlia) FillBuckets(lowestNonEmptyIndex int) []KademliaID {
 	prefixOnes = append(prefixOnes, byte(254))
 	invertedBit = append(invertedBit, byte(2))
 	suffixOnes = append(suffixOnes, byte(1))
-	index := IDLength*8 - lowestNonEmptyIndex
+	index := IDLength*8 - kademlia.network.routingTable.LowestNonEmptyBucketIndex()
 	for i := 0; i < index-1; i++ {
 		ShiftLeft(prefixOnes)
 		ShiftLeft(invertedBit)
@@ -103,7 +102,6 @@ func (kademlia *Kademlia) FillBuckets(lowestNonEmptyIndex int) []KademliaID {
 	return lookupIDs
 }
 
-// -------------------- CREATE UNIT TEST --------------------
 // Shifts the given byte slice left by one
 func ShiftLeft(data []byte) {
 	for i := 0; i < len(data)-1; i++ {
@@ -122,7 +120,6 @@ func ShiftRight(data []byte) {
 }
 */
 
-// -------------------- CREATE UNIT TEST --------------------
 // And operator for byte slices
 func And(data1 []byte, data2 []byte) []byte {
 	var data []byte
@@ -132,7 +129,6 @@ func And(data1 []byte, data2 []byte) []byte {
 	return data
 }
 
-// -------------------- CREATE UNIT TEST --------------------
 // Or operator for byte slices
 func Or(data1 []byte, data2 []byte) []byte {
 	var data []byte
@@ -142,7 +138,6 @@ func Or(data1 []byte, data2 []byte) []byte {
 	return data
 }
 
-// -------------------- CREATE UNIT TEST --------------------
 // Xor operator for byte slices
 func Xor(data1 []byte, data2 []byte) []byte {
 	var data []byte
@@ -196,7 +191,6 @@ func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact {
 	return contactShortlist.GetContacts(k)
 }
 
-// -------------------- CREATE UNIT TEST --------------------
 // LookupContact helper
 func (kademlia *Kademlia) AppendToShortlist(
 	receivedCandidates []Contact, contactShortlist *ContactCandidates, target *KademliaID) {
@@ -211,10 +205,73 @@ func (kademlia *Kademlia) AppendToShortlist(
 	contactShortlist.Sort()
 }
 
-func (kademlia *Kademlia) LookupData(hash string) {
-	// TODO
+func (kademlia *Kademlia) LookupData(hash string) (string, []Contact) {
+	queriedContacts := ContactCandidates{contacts: []Contact{}}
+	contactShortlist := ContactCandidates{contacts: kademlia.network.routingTable.FindClosestContacts(NewKademliaID(hash), k)}
+	fmt.Println("Closest contacts in own routing table: ", ContactsString(contactShortlist.GetContacts(k)))
+	for i := 0; i < k; i++ {
+		if contactShortlist.Len() > i && !queriedContacts.Contains(&contactShortlist.contacts[i]) {
+			fmt.Println("Probing contact: ", contactShortlist.contacts[i].String())
+			data, receivedCandidates, err := kademlia.network.SendFindDataMessage(&contactShortlist.contacts[i], hash)
+			if err != nil {
+				// No response
+				fmt.Println("8No response from ", contactShortlist.contacts[i].String())
+				contactShortlist = *contactShortlist.Remove(i)
+				i--
+				continue
+			}
+			if data != "" {
+				// Store data in closest queried contact which did not return the data
+				if queriedContacts.Len() != 0 {
+					queriedContacts.Sort()
+					kademlia.network.SendStoreMessage(&queriedContacts.contacts[0], data)
+				}
+				return data, nil
+			}
+			queriedContacts.Append([]Contact{contactShortlist.contacts[i]})
+			closestBefore := contactShortlist.contacts[0]
+			kademlia.AppendToShortlist(receivedCandidates, &contactShortlist, NewKademliaID(hash))
+			fmt.Println("Received contactcandidates: ", ContactsString(receivedCandidates), "\ncontactShortlist: ", contactShortlist.String(), "\nqueriedContacts: ", queriedContacts.String())
+			i = -1
+			if closestBefore.ID.Equals(contactShortlist.contacts[0].ID) {
+				// Did not find a closer contact
+				fmt.Println("Did not find a closer contact")
+				// Probe k closest not already probed
+				for j := 0; j < k && contactShortlist.Len() > j; j++ {
+					if queriedContacts.Contains(&contactShortlist.contacts[j]) {
+						continue
+					}
+					data, _, err := kademlia.network.SendFindDataMessage(&contactShortlist.contacts[j], hash)
+					if err != nil {
+						// No response
+						fmt.Println("9No response from ", contactShortlist.contacts[j].String())
+						contactShortlist = *contactShortlist.Remove(j)
+						j--
+						continue
+					}
+					if data != "" {
+						// Store data in closest queried contact which did not return the data
+						if queriedContacts.Len() != 0 {
+							queriedContacts.Sort()
+							kademlia.network.SendStoreMessage(&queriedContacts.contacts[0], data)
+						}
+						return data, nil
+					}
+					queriedContacts.Append([]Contact{contactShortlist.contacts[j]})
+				}
+				return "", contactShortlist.GetContacts(k)
+			}
+		}
+	}
+	return "", contactShortlist.GetContacts(k)
 }
 
-func (kademlia *Kademlia) Store(data []byte) {
-	// TODO
+func (kademlia *Kademlia) Store(data string) []Contact {
+	var id KademliaID = sha1.Sum([]byte(data))
+	fmt.Println("Looking to store data: ", data, " with hash: ", id.String())
+	contacts := kademlia.LookupContact(&id)
+	for _, contact := range contacts {
+		kademlia.network.SendStoreMessage(&contact, data)
+	}
+	return contacts
 }
