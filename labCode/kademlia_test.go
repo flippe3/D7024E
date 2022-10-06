@@ -49,11 +49,10 @@ func TestKademliaHandleResponse(t *testing.T) {
 	queriedContacts := ContactCandidates{}
 	queriedContact := contactShortlist.contacts[1]
 	target := NewKademliaID("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-	closestBefore := Contact{}
 	contactShortlist.contacts[0].CalcDistance(target)
 	contactShortlist.contacts[1].CalcDistance(target)
 	kademlia := Kademlia{network: &Network{routingTable: NewRoutingTable(NewContact(NewKademliaID("ffffffffffffffffffffffffffffffffffffffff"), ""))}}
-	kademlia.HandleResponse(&closestBefore, &queriedContacts, queriedContact, receivedCandidates, &contactShortlist, target)
+	kademlia.HandleResponse(&queriedContacts, queriedContact, receivedCandidates, &contactShortlist, target)
 
 	if contactShortlist.Len() != 3 {
 		t.Errorf("contactShortlist did not have expected length 3, instead has length %v", contactShortlist.Len())

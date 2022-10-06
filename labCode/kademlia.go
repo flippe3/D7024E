@@ -137,7 +137,6 @@ func Xor(data1 []byte, data2 []byte) []byte {
 }
 
 func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact {
-	closestBefore := Contact{}
 	queriedContacts := ContactCandidates{contacts: []Contact{}}
 	contactShortlist := ContactCandidates{contacts: kademlia.network.routingTable.FindClosestContacts(target, k)}
 	fmt.Println("Closest contacts in own routing table: ", ContactsString(contactShortlist.GetContacts(k)))
@@ -151,7 +150,8 @@ func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact {
 				i--
 				continue
 			}
-			kademlia.HandleResponse(&closestBefore, &queriedContacts, contactShortlist.contacts[i], receivedCandidates, &contactShortlist, target)
+			closestBefore := contactShortlist.contacts[0]
+			kademlia.HandleResponse(&queriedContacts, contactShortlist.contacts[i], receivedCandidates, &contactShortlist, target)
 			i = -1
 			if closestBefore.ID.Equals(contactShortlist.contacts[0].ID) {
 				fmt.Println("Did not find a closer contact")
@@ -174,10 +174,9 @@ func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact {
 }
 
 // LookupContact helper
-func (kademlia *Kademlia) HandleResponse(closestBefore *Contact, queriedContacts *ContactCandidates, queriedContact Contact,
+func (kademlia *Kademlia) HandleResponse(queriedContacts *ContactCandidates, queriedContact Contact,
 	receivedCandidates []Contact, contactShortlist *ContactCandidates, target *KademliaID) {
 	queriedContacts.Append([]Contact{queriedContact})
-	closestBefore = &contactShortlist.contacts[0]
 	for i := 0; i < len(receivedCandidates); i++ {
 		if receivedCandidates[i].ID.Equals(kademlia.network.routingTable.me.ID) || contactShortlist.Contains(&receivedCandidates[i]) {
 			continue // Ignore self and already known about nodes
@@ -191,7 +190,6 @@ func (kademlia *Kademlia) HandleResponse(closestBefore *Contact, queriedContacts
 }
 
 func (kademlia *Kademlia) LookupData(hash string) (string, []Contact) {
-	closestBefore := Contact{}
 	queriedContacts := ContactCandidates{contacts: []Contact{}}
 	contactShortlist := ContactCandidates{contacts: kademlia.network.routingTable.FindClosestContacts(NewKademliaID(hash), k)}
 	fmt.Println("Closest contacts in own routing table: ", ContactsString(contactShortlist.GetContacts(k)))
@@ -211,7 +209,8 @@ func (kademlia *Kademlia) LookupData(hash string) (string, []Contact) {
 				}
 				return data, nil
 			}
-			kademlia.HandleResponse(&closestBefore, &queriedContacts, contactShortlist.contacts[i], receivedCandidates, &contactShortlist, NewKademliaID(hash))
+			closestBefore := contactShortlist.contacts[0]
+			kademlia.HandleResponse(&queriedContacts, contactShortlist.contacts[i], receivedCandidates, &contactShortlist, NewKademliaID(hash))
 			i = -1
 			if closestBefore.ID.Equals(contactShortlist.contacts[0].ID) {
 				fmt.Println("Did not find a closer contact")

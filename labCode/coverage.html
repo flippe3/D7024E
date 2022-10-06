@@ -61,7 +61,7 @@
 				
 				<option value="file2">labCode/contact.go (100.0%)</option>
 				
-				<option value="file3">labCode/kademlia.go (34.5%)</option>
+				<option value="file3">labCode/kademlia.go (34.0%)</option>
 				
 				<option value="file4">labCode/kademliaid.go (100.0%)</option>
 				
@@ -469,7 +469,6 @@ func Xor(data1 []byte, data2 []byte) []byte <span class="cov8" title="1">{
 }
 
 func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact <span class="cov0" title="0">{
-        closestBefore := Contact{}
         queriedContacts := ContactCandidates{contacts: []Contact{}}
         contactShortlist := ContactCandidates{contacts: kademlia.network.routingTable.FindClosestContacts(target, k)}
         fmt.Println("Closest contacts in own routing table: ", ContactsString(contactShortlist.GetContacts(k)))
@@ -483,7 +482,8 @@ func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact <span clas
                                 i--
                                 continue</span>
                         }
-                        <span class="cov0" title="0">kademlia.HandleResponse(&amp;closestBefore, &amp;queriedContacts, contactShortlist.contacts[i], receivedCandidates, &amp;contactShortlist, target)
+                        <span class="cov0" title="0">closestBefore := contactShortlist.contacts[0]
+                        kademlia.HandleResponse(&amp;queriedContacts, contactShortlist.contacts[i], receivedCandidates, &amp;contactShortlist, target)
                         i = -1
                         if closestBefore.ID.Equals(contactShortlist.contacts[0].ID) </span><span class="cov0" title="0">{
                                 fmt.Println("Did not find a closer contact")
@@ -506,10 +506,9 @@ func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact <span clas
 }
 
 // LookupContact helper
-func (kademlia *Kademlia) HandleResponse(closestBefore *Contact, queriedContacts *ContactCandidates, queriedContact Contact,
+func (kademlia *Kademlia) HandleResponse(queriedContacts *ContactCandidates, queriedContact Contact,
         receivedCandidates []Contact, contactShortlist *ContactCandidates, target *KademliaID) <span class="cov8" title="1">{
         queriedContacts.Append([]Contact{queriedContact})
-        closestBefore = &amp;contactShortlist.contacts[0]
         for i := 0; i &lt; len(receivedCandidates); i++ </span><span class="cov8" title="1">{
                 if receivedCandidates[i].ID.Equals(kademlia.network.routingTable.me.ID) || contactShortlist.Contains(&amp;receivedCandidates[i]) </span><span class="cov8" title="1">{
                         continue</span> // Ignore self and already known about nodes
@@ -523,7 +522,6 @@ func (kademlia *Kademlia) HandleResponse(closestBefore *Contact, queriedContacts
 }
 
 func (kademlia *Kademlia) LookupData(hash string) (string, []Contact) <span class="cov0" title="0">{
-        closestBefore := Contact{}
         queriedContacts := ContactCandidates{contacts: []Contact{}}
         contactShortlist := ContactCandidates{contacts: kademlia.network.routingTable.FindClosestContacts(NewKademliaID(hash), k)}
         fmt.Println("Closest contacts in own routing table: ", ContactsString(contactShortlist.GetContacts(k)))
@@ -543,7 +541,8 @@ func (kademlia *Kademlia) LookupData(hash string) (string, []Contact) <span clas
                                 }</span>
                                 <span class="cov0" title="0">return data, nil</span>
                         }
-                        <span class="cov0" title="0">kademlia.HandleResponse(&amp;closestBefore, &amp;queriedContacts, contactShortlist.contacts[i], receivedCandidates, &amp;contactShortlist, NewKademliaID(hash))
+                        <span class="cov0" title="0">closestBefore := contactShortlist.contacts[0]
+                        kademlia.HandleResponse(&amp;queriedContacts, contactShortlist.contacts[i], receivedCandidates, &amp;contactShortlist, NewKademliaID(hash))
                         i = -1
                         if closestBefore.ID.Equals(contactShortlist.contacts[0].ID) </span><span class="cov0" title="0">{
                                 fmt.Println("Did not find a closer contact")
