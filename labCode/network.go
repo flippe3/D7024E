@@ -49,44 +49,15 @@ func (network *Network) Listen(dataMap map[string]string, chConn chan net.Conn) 
 
 func (network *Network) HandleConnection(conn net.Conn, dataMap map[string]string) {
 	b := make([]byte, 255)
-	n, err := conn.Read(b)
-	if err != nil {
-		fmt.Println("1Read error", err)
-	}
-	fmt.Println("Inside network: ", "n: ", n, "b: ", b)
-
-	// j = Join = 106
-	// p = SendPing = 112
-	// c = FindContact 😍 = 99
-	// d = FindData = 100
-	// s = StoreMessage = 115
-
-	var inp = string(b)
-	if string([]rune(inp)[0]) == "j" {
-		// Join 🤗
-		// Sends back my id and ip COMMA SEPERATED :)
-		strMsg := network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + ","
-		fmt.Println(strMsg)
-		conn.Write([]byte(strMsg))
-
-	} else if string([]rune(inp)[0]) == "p" {
-		// SendPing 🏓
-		// Add id and ip to routing table
-		// returns my id and ip COMMA SEPERATED :3
-
-		// Commenting out these 2 lines below because they lead to infinite pings
-		//var inp = strings.Split(string(b), ",")
-		//network.CheckAliveAddContact(NewContact(NewKademliaID(inp[1]), inp[2]))
-	} else if string([]rune(inp)[0]) == "c" {
-		// FindContact 👷‍♀️
-		// returns that contacts nearest 4 contacts from my routing table
-		// Expects inp[3] to be targetID
+	conn.Read(b)
+	inp := string(b)
+	if string([]rune(inp)[0]) == "j" { // Join 🤗
+		conn.Write([]byte(network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + ","))
+	} else if string([]rune(inp)[0]) == "c" { // FindContact 👷‍♀️
 		var inp = strings.Split(string(b), ",")
-
 		network.CheckAliveAddContact(NewContact(NewKademliaID(inp[1]), inp[2]))
+		getClosestFour := network.routingTable.FindClosestContacts(NewKademliaID(inp[3]), 4) // Expects inp[3] to be targetID
 
-		getClosestFour := network.routingTable.FindClosestContacts(NewKademliaID(inp[3]), 4)
-		// Create the message
 		var strMsg string
 		for _, k := range getClosestFour {
 			contactArr := strings.Split(k.String(), "\"")
@@ -94,12 +65,8 @@ func (network *Network) HandleConnection(conn net.Conn, dataMap map[string]strin
 		}
 		fmt.Println("Looking for closest contacts to ID: ", NewKademliaID(inp[3]), ", found : ", strMsg)
 		conn.Write([]byte(strMsg))
-	} else if string([]rune(inp)[0]) == "d" {
-		// FindDataMessage 📀
-		// Look for the data in dataMap
-		// ex: nodeid,nodeip,hash
+	} else if string([]rune(inp)[0]) == "d" { // FindDataMessage 📀
 		var inp = strings.Split(string(b), ",")
-
 		network.CheckAliveAddContact(NewContact(NewKademliaID(inp[1]), inp[2]))
 		data, ok := dataMap[inp[3]]
 		if ok {
@@ -107,7 +74,6 @@ func (network *Network) HandleConnection(conn net.Conn, dataMap map[string]strin
 			conn.Write([]byte(data + ","))
 		} else {
 			getClosestFour := network.routingTable.FindClosestContacts(NewKademliaID(inp[3]), 4)
-			// Create the message
 			var strMsg string
 			for _, k := range getClosestFour {
 				contactArr := strings.Split(k.String(), "\"")
@@ -116,10 +82,8 @@ func (network *Network) HandleConnection(conn net.Conn, dataMap map[string]strin
 			fmt.Println("Looking for closest contacts to ID: ", NewKademliaID(inp[3]), ", found : ", strMsg)
 			conn.Write([]byte(strMsg))
 		}
-	} else if string([]rune(inp)[0]) == "s" {
-		// StoreMessage 🚛
+	} else if string([]rune(inp)[0]) == "s" { // StoreMessage 🚛
 		var inp = strings.Split(string(b), ",")
-
 		network.CheckAliveAddContact(NewContact(NewKademliaID(inp[1]), inp[2]))
 		r := sha1.Sum([]byte(inp[3]))
 		hash := hex.EncodeToString(r[:])
@@ -156,11 +120,6 @@ func (network *Network) SendPingMessage(contact *Contact) (response bool) {
 		return false
 	} else {
 		network.CheckAliveAddContact(*contact) // Update routing table
-
-		// Commenting out these 2 lines below because they lead to infinite pings
-		//strMessage := "p," + network.routingTable.me.ID.String() + "," + network.routingTable.me.Address
-		//conn.Write([]byte(strMessage))
-
 		conn.Close()
 		return true
 	}
@@ -174,22 +133,17 @@ func (network *Network) SendFindContactMessage(contact *Contact, target *Kademli
 		return nil, fmt.Errorf("3No response from " + contact.String())
 	} else {
 		network.CheckAliveAddContact(*contact) // Update routing table
-		messageStr := "c," + network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + "," + target.String() + ","
-		_, writeErr := conn.Write([]byte(messageStr))
-		if writeErr != nil {
-			return nil, writeErr
-		} else {
-			b := make([]byte, 255)
-			conn.Read(b)
-			conn.Close()
-			bArr := strings.Split(string(b), ",")
-			contacts := []Contact{}
-			for i := 0; i < len(bArr)-1; i = i + 2 {
-				contacts = append(contacts, NewContact(NewKademliaID(bArr[i]), bArr[i+1]))
-			}
-			fmt.Println("SendFindContactMessage to ", contact.String(), "with target: ", target.String(), ", found", len(contacts), "contacts: ", ContactsString(contacts))
-			return contacts, nil
+		conn.Write([]byte("c," + network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + "," + target.String() + ","))
+		b := make([]byte, 255)
+		conn.Read(b)
+		conn.Close()
+		bArr := strings.Split(string(b), ",")
+		contacts := []Contact{}
+		for i := 0; i < len(bArr)-1; i = i + 2 {
+			contacts = append(contacts, NewContact(NewKademliaID(bArr[i]), bArr[i+1]))
 		}
+		fmt.Println("SendFindContactMessage to ", contact.String(), "with target: ", target.String(), ", found", len(contacts), "contacts: ", ContactsString(contacts))
+		return contacts, nil
 	}
 }
 
@@ -200,27 +154,21 @@ func (network *Network) SendFindDataMessage(contact *Contact, hash string) (stri
 		return "", nil, fmt.Errorf("4No response from " + contact.String())
 	} else {
 		network.CheckAliveAddContact(*contact) // Update routing table
-		messageStr := "d," + network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + "," + hash + ","
-		_, writeErr := conn.Write([]byte(messageStr))
-		if writeErr != nil {
-			return "", nil, writeErr
-		} else {
-			b := make([]byte, 255)
-			conn.Read(b)
-			conn.Close()
-			bArr := strings.Split(string(b), ",")
-			if len(bArr) == 2 {
-				fmt.Println("SendFindDataMessage to ", contact.String(), "with target: ", hash, ", found the data ", bArr[0])
-				return bArr[0], nil, nil
-			} else {
-				contacts := []Contact{}
-				for i := 0; i < len(bArr)-1; i = i + 2 {
-					contacts = append(contacts, NewContact(NewKademliaID(bArr[i]), bArr[i+1]))
-				}
-				fmt.Println("SendFindDataMessage to ", contact.String(), "with target: ", hash, ", found", len(contacts), "contacts: ", ContactsString(contacts))
-				return "", contacts, nil
-			}
+		conn.Write([]byte("d," + network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + "," + hash + ","))
+		b := make([]byte, 255)
+		conn.Read(b)
+		conn.Close()
+		bArr := strings.Split(string(b), ",")
+		if len(bArr) == 2 {
+			fmt.Println("SendFindDataMessage to ", contact.String(), "with target: ", hash, ", found the data ", bArr[0])
+			return bArr[0], nil, nil
 		}
+		contacts := []Contact{}
+		for i := 0; i < len(bArr)-1; i = i + 2 {
+			contacts = append(contacts, NewContact(NewKademliaID(bArr[i]), bArr[i+1]))
+		}
+		fmt.Println("SendFindDataMessage to ", contact.String(), "with target: ", hash, ", found", len(contacts), "contacts: ", ContactsString(contacts))
+		return "", contacts, nil
 	}
 }
 
@@ -231,10 +179,7 @@ func (network *Network) SendStoreMessage(contact *Contact, data string) {
 		fmt.Println("5No response from " + contact.String())
 	} else {
 		network.CheckAliveAddContact(*contact) // Update routing table
-		messageStr := "s," + network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + "," + data + ","
-		_, writeErr := conn.Write([]byte(messageStr))
-		if writeErr != nil {
-			fmt.Println("WriteError to "+contact.String(), " while trying to write ", data)
-		}
+		conn.Write([]byte("s," + network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + "," + data + ","))
+		conn.Close()
 	}
 }

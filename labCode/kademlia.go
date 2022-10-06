@@ -20,7 +20,6 @@ type Kademlia struct {
 
 // j
 func (kademlia *Kademlia) Join() {
-	// Setup your kademlia
 	myIP := GetMyIP()
 	myKademliaID := NewRandomKademliaID()
 	fmt.Println("Generating new kademlia ID", myKademliaID, "for ip: ", myIP)
@@ -37,23 +36,14 @@ func (kademlia *Kademlia) Join() {
 		if connErr != nil {
 			continue
 		} else {
-			_, writeErr := conn.Write([]byte("j,"))
-			if writeErr != nil {
-				fmt.Println("Failed to send join message", writeErr)
-			}
-
+			conn.Write([]byte("j,"))
 			b := make([]byte, 255)
-			_, readErr := conn.Read(b)
-			if readErr != nil {
-				fmt.Println("2Read error", readErr)
-			}
+			conn.Read(b)
 			conn.Close()
 			bArr := strings.Split(string(b), ",")
 
-			bootstrappingContact := NewContact(NewKademliaID(bArr[0]), bArr[1])
-			fmt.Println("Adding bootstrapping contact: ", bootstrappingContact.String())
 			routingTable.AddContact(NewContact(NewKademliaID(bArr[0]), bArr[1]))
-			fmt.Println("Looked up following contacts when looking for self: ", ContactsString(kademlia.LookupContact(routingTable.me.ID)))
+			kademlia.LookupContact(routingTable.me.ID)
 			fmt.Println("Calculated the following kademliaIDs to look up when filling buckets: ")
 			idList := kademlia.FillBuckets()
 			for _, id := range idList {
@@ -62,7 +52,6 @@ func (kademlia *Kademlia) Join() {
 			for _, id := range idList {
 				kademlia.LookupContact(&id)
 			}
-			return
 		}
 	}
 }
@@ -148,6 +137,7 @@ func Xor(data1 []byte, data2 []byte) []byte {
 }
 
 func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact {
+	closestBefore := Contact{}
 	queriedContacts := ContactCandidates{contacts: []Contact{}}
 	contactShortlist := ContactCandidates{contacts: kademlia.network.routingTable.FindClosestContacts(target, k)}
 	fmt.Println("Closest contacts in own routing table: ", ContactsString(contactShortlist.GetContacts(k)))
@@ -156,29 +146,21 @@ func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact {
 			fmt.Println("Probing contact: ", contactShortlist.contacts[i].String())
 			receivedCandidates, err := kademlia.network.SendFindContactMessage(&contactShortlist.contacts[i], target)
 			if err != nil {
-				// No response
 				fmt.Println("1No response from ", contactShortlist.contacts[i].String())
 				contactShortlist = *contactShortlist.Remove(i)
 				i--
 				continue
 			}
-			queriedContacts.Append([]Contact{contactShortlist.contacts[i]})
-			closestBefore := contactShortlist.contacts[0]
-			kademlia.AppendToShortlist(receivedCandidates, &contactShortlist, target)
-			fmt.Println("Received contactcandidates: ", ContactsString(receivedCandidates), "\ncontactShortlist: ", contactShortlist.String(), "\nqueriedContacts: ", queriedContacts.String())
+			kademlia.HandleResponse(&closestBefore, &queriedContacts, contactShortlist.contacts[i], receivedCandidates, &contactShortlist, target)
 			i = -1
 			if closestBefore.ID.Equals(contactShortlist.contacts[0].ID) {
-				// Did not find a closer contact
 				fmt.Println("Did not find a closer contact")
-				// Probe k closest not already probed
-				for j := 0; j < k && contactShortlist.Len() > j; j++ {
+				for j := 0; j < k && contactShortlist.Len() > j; j++ { // Probe k closest not already probed
 					if queriedContacts.Contains(&contactShortlist.contacts[j]) {
 						continue
-					}
-					if kademlia.network.SendPingMessage(&contactShortlist.contacts[j]) {
+					} else if kademlia.network.SendPingMessage(&contactShortlist.contacts[j]) {
 						queriedContacts.Append([]Contact{contactShortlist.contacts[j]})
 					} else {
-						// No response
 						fmt.Println("2No response from ", contactShortlist.contacts[j].String())
 						contactShortlist = *contactShortlist.Remove(j)
 						j--
@@ -192,8 +174,10 @@ func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact {
 }
 
 // LookupContact helper
-func (kademlia *Kademlia) AppendToShortlist(
+func (kademlia *Kademlia) HandleResponse(closestBefore *Contact, queriedContacts *ContactCandidates, queriedContact Contact,
 	receivedCandidates []Contact, contactShortlist *ContactCandidates, target *KademliaID) {
+	queriedContacts.Append([]Contact{queriedContact})
+	closestBefore = &contactShortlist.contacts[0]
 	for i := 0; i < len(receivedCandidates); i++ {
 		if receivedCandidates[i].ID.Equals(kademlia.network.routingTable.me.ID) || contactShortlist.Contains(&receivedCandidates[i]) {
 			continue // Ignore self and already known about nodes
@@ -203,9 +187,11 @@ func (kademlia *Kademlia) AppendToShortlist(
 		}
 	}
 	contactShortlist.Sort()
+	fmt.Println("Received contactcandidates: ", ContactsString(receivedCandidates), "\ncontactShortlist: ", contactShortlist.String(), "\nqueriedContacts: ", queriedContacts.String())
 }
 
 func (kademlia *Kademlia) LookupData(hash string) (string, []Contact) {
+	closestBefore := Contact{}
 	queriedContacts := ContactCandidates{contacts: []Contact{}}
 	contactShortlist := ContactCandidates{contacts: kademlia.network.routingTable.FindClosestContacts(NewKademliaID(hash), k)}
 	fmt.Println("Closest contacts in own routing table: ", ContactsString(contactShortlist.GetContacts(k)))
@@ -214,46 +200,35 @@ func (kademlia *Kademlia) LookupData(hash string) (string, []Contact) {
 			fmt.Println("Probing contact: ", contactShortlist.contacts[i].String())
 			data, receivedCandidates, err := kademlia.network.SendFindDataMessage(&contactShortlist.contacts[i], hash)
 			if err != nil {
-				// No response
 				fmt.Println("8No response from ", contactShortlist.contacts[i].String())
 				contactShortlist = *contactShortlist.Remove(i)
 				i--
 				continue
-			}
-			if data != "" {
-				// Store data in closest queried contact which did not return the data
+			} else if data != "" {
 				if queriedContacts.Len() != 0 {
 					queriedContacts.Sort()
-					kademlia.network.SendStoreMessage(&queriedContacts.contacts[0], data)
+					kademlia.network.SendStoreMessage(&queriedContacts.contacts[0], data) // Store data in closest queried contact which did not return the data
 				}
 				return data, nil
 			}
-			queriedContacts.Append([]Contact{contactShortlist.contacts[i]})
-			closestBefore := contactShortlist.contacts[0]
-			kademlia.AppendToShortlist(receivedCandidates, &contactShortlist, NewKademliaID(hash))
-			fmt.Println("Received contactcandidates: ", ContactsString(receivedCandidates), "\ncontactShortlist: ", contactShortlist.String(), "\nqueriedContacts: ", queriedContacts.String())
+			kademlia.HandleResponse(&closestBefore, &queriedContacts, contactShortlist.contacts[i], receivedCandidates, &contactShortlist, NewKademliaID(hash))
 			i = -1
 			if closestBefore.ID.Equals(contactShortlist.contacts[0].ID) {
-				// Did not find a closer contact
 				fmt.Println("Did not find a closer contact")
-				// Probe k closest not already probed
-				for j := 0; j < k && contactShortlist.Len() > j; j++ {
+				for j := 0; j < k && contactShortlist.Len() > j; j++ { // Probe k closest not already probed
 					if queriedContacts.Contains(&contactShortlist.contacts[j]) {
 						continue
 					}
 					data, _, err := kademlia.network.SendFindDataMessage(&contactShortlist.contacts[j], hash)
 					if err != nil {
-						// No response
 						fmt.Println("9No response from ", contactShortlist.contacts[j].String())
 						contactShortlist = *contactShortlist.Remove(j)
 						j--
 						continue
-					}
-					if data != "" {
-						// Store data in closest queried contact which did not return the data
+					} else if data != "" {
 						if queriedContacts.Len() != 0 {
 							queriedContacts.Sort()
-							kademlia.network.SendStoreMessage(&queriedContacts.contacts[0], data)
+							kademlia.network.SendStoreMessage(&queriedContacts.contacts[0], data) // Store data in closest queried contact which did not return the data
 						}
 						return data, nil
 					}
@@ -268,7 +243,6 @@ func (kademlia *Kademlia) LookupData(hash string) (string, []Contact) {
 
 func (kademlia *Kademlia) Store(data string) []Contact {
 	var id KademliaID = sha1.Sum([]byte(data))
-	fmt.Println("Looking to store data: ", data, " with hash: ", id.String())
 	contacts := kademlia.LookupContact(&id)
 	for _, contact := range contacts {
 		kademlia.network.SendStoreMessage(&contact, data)

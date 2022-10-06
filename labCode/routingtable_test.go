@@ -32,6 +32,9 @@ func TestGetBucketIndex(t *testing.T) {
 	if rt.getBucketIndex(NewKademliaID("ffffffff00000000000000000000000000000001")) != 159 {
 		t.Errorf("Couldn't index closest contact correctly.")
 	}
+	if rt.getBucketIndex(NewKademliaID("ffffffff00000000000000000000000000000000")) != 159 {
+		t.Errorf("Couldn't index self correctly.")
+	}
 	if rt.getBucketIndex(NewKademliaID("00000000ffffffffffffffffffffffffffffffff")) != 0 {
 		t.Errorf("Couldn't index furthest away contact correctly.")
 	}
@@ -42,6 +45,9 @@ func TestGetBucketIndex(t *testing.T) {
 
 func TestLowestNonEmptyBucketIndex(t *testing.T) {
 	rt := NewRoutingTable(NewContact(NewKademliaID("ffffffff00000000000000000000000000000000"), "localhost:8000"))
+	if rt.LowestNonEmptyBucketIndex() != 159 {
+		t.Errorf("Lowest non-empty bucket index: %v, expected 159", rt.LowestNonEmptyBucketIndex())
+	}
 	rt.AddContact(NewContact(NewKademliaID("ffffffff00000000000000000000000000000001"), ""))
 	if rt.LowestNonEmptyBucketIndex() != 159 {
 		t.Errorf("Lowest non-empty bucket index: %v, expected 159", rt.LowestNonEmptyBucketIndex())

@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestRandomNewKademliaID(t *testing.T) {
+func TestKademliaidRandomNewKademliaID(t *testing.T) {
 	randomIdOne := NewRandomKademliaID()
 	randomIdTwo := NewRandomKademliaID()
 
@@ -17,11 +17,14 @@ func TestRandomNewKademliaID(t *testing.T) {
 }
 
 // This does not increase Less to 100%
-func TestLess(t *testing.T) {
+func TestKademliaidLess(t *testing.T) {
 	kadIdBig := NewKademliaID("FFFFFFFF00000000000000000000000000000000")
 	kadIdSmall := NewKademliaID("1111111100000000000000000000000000000000")
 
 	if kadIdSmall.Less(kadIdBig) == false {
 		t.Errorf("Less is very broken it says %s < %s", kadIdBig, kadIdSmall)
+	}
+	if kadIdBig.Less(kadIdBig) == true {
+		t.Errorf("Less is very broken it says %s < %s", kadIdBig, kadIdBig)
 	}
 }

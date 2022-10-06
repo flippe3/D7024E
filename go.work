@@ -1,4 +1,3 @@
 go 1.18
 
 use labCode
-use test/docker-gs-ping-roach

@@ -39,3 +39,38 @@ func TestKademliaFillBuckets(t *testing.T) {
 		}
 	}
 }
+
+func TestKademliaHandleResponse(t *testing.T) {
+	receivedCandidates := []Contact{NewContact(NewKademliaID("ffffffffffffffffffffffffffffffffffffffff"), ""),
+		NewContact(NewKademliaID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), ""),
+		NewContact(NewKademliaID("0000000000000000000000000000000000000000"), "")}
+	contactShortlist := ContactCandidates{contacts: []Contact{NewContact(NewKademliaID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), ""),
+		NewContact(NewKademliaID("cccccccccccccccccccccccccccccccccccccccc"), "")}}
+	queriedContacts := ContactCandidates{}
+	queriedContact := contactShortlist.contacts[1]
+	target := NewKademliaID("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+	closestBefore := Contact{}
+	contactShortlist.contacts[0].CalcDistance(target)
+	contactShortlist.contacts[1].CalcDistance(target)
+	kademlia := Kademlia{network: &Network{routingTable: NewRoutingTable(NewContact(NewKademliaID("ffffffffffffffffffffffffffffffffffffffff"), ""))}}
+	kademlia.HandleResponse(&closestBefore, &queriedContacts, queriedContact, receivedCandidates, &contactShortlist, target)
+
+	if contactShortlist.Len() != 3 {
+		t.Errorf("contactShortlist did not have expected length 3, instead has length %v", contactShortlist.Len())
+	}
+	if queriedContacts.Len() != 1 {
+		t.Errorf("queriedContacts did not have expected length 1, instead has length %v", queriedContacts.Len())
+	}
+	if !contactShortlist.contacts[0].ID.Equals(NewKademliaID("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")) {
+		t.Errorf("index 0 of contactShortlist did not have expected kademliaID aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, instead got kademlia ID %s", contactShortlist.contacts[0].ID.String())
+	}
+	if !contactShortlist.contacts[1].ID.Equals(NewKademliaID("cccccccccccccccccccccccccccccccccccccccc")) {
+		t.Errorf("index 1 of contactShortlist did not have expected kademliaID cccccccccccccccccccccccccccccccccccccccc, instead got kademlia ID %s", contactShortlist.contacts[1].ID.String())
+	}
+	if !contactShortlist.contacts[2].ID.Equals(NewKademliaID("0000000000000000000000000000000000000000")) {
+		t.Errorf("index 2 of contactShortlist did not have expected kademliaID 0000000000000000000000000000000000000000, instead got kademlia ID %s", contactShortlist.contacts[2].ID.String())
+	}
+	if !queriedContacts.contacts[0].ID.Equals(NewKademliaID("cccccccccccccccccccccccccccccccccccccccc")) {
+		t.Errorf("index 0 of queriedContacts did not have expected kademliaID cccccccccccccccccccccccccccccccccccccccc, instead got kademlia ID %s", queriedContacts.contacts[0].ID.String())
+	}
+}
