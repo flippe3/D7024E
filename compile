@@ -1,4 +1,6 @@
-sudo docker compose down
-./build
-sudo docker compose up -d
-sudo docker exec -it d7024e-bootstrapNode-1 ./output
+docker rm -f test
+docker compose down
+docker build -f Dockerfile -t kadlab:latest .
+docker build -f DockerfileRun -t kadlab:run .
+docker compose up -d
+docker run --name test --net kademlia_network -it kadlab:latest sh

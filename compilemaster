@@ -1,6 +1,0 @@
-sudo docker rm -f testMaster
-sudo docker compose -f docker-compose-master.yml down
-sudo docker build -f Dockerfile -t kadlab:latest .
-sudo docker build -f DockerfileRun -t kadlab:run .
-sudo docker compose -f docker-compose-master.yml up -d
-sudo docker run --name testMaster --net kademlia_network_master -it kadlab:latest sh

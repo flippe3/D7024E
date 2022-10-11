@@ -32,6 +32,7 @@ func NewKademliaID(data string) *KademliaID {
 // Used to join network
 func NewRandomKademliaID() *KademliaID {
 	rand.Seed(time.Now().UnixNano())
+	time.Sleep(10 * time.Millisecond)
 	newKademliaID := KademliaID{}
 	for i := 0; i < IDLength; i++ {
 		newKademliaID[i] = uint8(rand.Intn(256))
