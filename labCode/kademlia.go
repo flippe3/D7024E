@@ -52,6 +52,7 @@ func (kademlia *Kademlia) Join() {
 			for _, id := range idList {
 				kademlia.LookupContact(&id)
 			}
+			return
 		}
 	}
 }

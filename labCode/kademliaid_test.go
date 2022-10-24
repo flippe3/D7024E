@@ -7,7 +7,6 @@ import (
 func TestKademliaidRandomNewKademliaID(t *testing.T) {
 	randomIdOne := NewRandomKademliaID()
 	randomIdTwo := NewRandomKademliaID()
-
 	if len(randomIdOne) != IDLength {
 		t.Errorf("RandomNewKademliaId Wrong Length: %s", randomIdOne)
 	}

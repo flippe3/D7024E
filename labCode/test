@@ -1,2 +1,2 @@
-go test -coverprofile=coverage.out
-go tool cover -html=coverage.out -o coverage.html
+go test -coverprofile=coverage
+go tool cover -html=coverage -o coverage.html
