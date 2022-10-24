@@ -1,2 +1,2 @@
-go test -coverprofile=coverage
-go tool cover -html=coverage -o coverage.html
+sudo go test -coverprofile=coverage
+sudo go tool cover -html=coverage -o coverage.html

@@ -13,7 +13,7 @@ func TestFindClosestContacts(t *testing.T) {
 	rt.AddContact(NewContact(NewKademliaID("1111111400000000000000000000000000000000"), "localhost:8002"))
 	rt.AddContact(NewContact(NewKademliaID("2fffffff00000000000000000000000000000000"), "localhost:8002"))
 
-	contacts := rt.FindClosestContacts(NewKademliaID("f111111400000000000000000000000000000000"), 4)
+	contacts := rt.FindClosestContacts(NewKademliaID("f111111400000000000000000000000000000000"), 1)
 
 	if !contacts[0].ID.Equals(NewKademliaID("2fffffff00000000000000000000000000000000")) {
 		t.Errorf("Did not find closest contact. contacts[0].ID = %s", contacts[0].ID)

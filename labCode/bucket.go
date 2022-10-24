@@ -4,7 +4,7 @@ import (
 	"container/list"
 )
 
-const bucketSize = 20
+const bucketSize = 8
 
 // bucket definition
 // contains a List

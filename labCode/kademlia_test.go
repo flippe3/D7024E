@@ -8,8 +8,15 @@ import (
 )
 
 func TestKademliaJoin(t *testing.T) {
-	//kademlia := Kademlia{}
-	//kademlia.Join()
+	kademlia := Kademlia{}
+	kademlia.Join()
+	kademlia.Store("lol")
+	kademlia.LookupData("403926033d001b5279df37cbbe5287b7c7c267fa")
+	kademlia.LookupData("403926033d001b5279df37cbbe5287b7c7c267ff")
+	ch := make(chan int)
+	go RunKademlia(&kademlia, ch)
+	ch <- 0
+	go CliParser(&kademlia, ch)
 }
 
 func TestKademliaFillBuckets(t *testing.T) {

@@ -17,6 +17,7 @@ type Kademlia struct {
 }
 
 // Functions in this file are iterative
+// test
 
 // j
 func (kademlia *Kademlia) Join() {
