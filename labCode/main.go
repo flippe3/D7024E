@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	kademlia := Kademlia{dataMap: make(map[string]string)}
+	kademlia := Kademlia{dataMap: make(map[string]Object)}
 	kademlia.Join()
 	exit := make(chan int)
 	go CliParser(&kademlia, exit)

@@ -7,13 +7,20 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const k int = 4
 
+type Object struct {
+	data        string
+	ttl         int
+	storageTime time.Time
+}
+
 type Kademlia struct {
 	network *Network
-	dataMap map[string]string
+	dataMap map[string]Object
 }
 
 // Functions in this file are iterative
@@ -204,12 +211,12 @@ func (kademlia *Kademlia) LookupData(hash string) (string, []Contact) {
 				contactShortlist = *contactShortlist.Remove(i)
 				i--
 				continue
-			} else if data != "" {
+			} else if receivedCandidates == nil {
 				if queriedContacts.Len() != 0 {
 					queriedContacts.Sort()
-					kademlia.network.SendStoreMessage(&queriedContacts.contacts[0], data) // Store data in closest queried contact which did not return the data
+					kademlia.network.SendStoreMessage(&queriedContacts.contacts[0], data.data, data.ttl) // Store data in closest queried contact which did not return the data
 				}
-				return data, nil
+				return data.data, nil
 			}
 			closestBefore := contactShortlist.contacts[0]
 			kademlia.HandleResponse(&queriedContacts, contactShortlist.contacts[i], receivedCandidates, &contactShortlist, NewKademliaID(hash))
@@ -226,12 +233,12 @@ func (kademlia *Kademlia) LookupData(hash string) (string, []Contact) {
 						contactShortlist = *contactShortlist.Remove(j)
 						j--
 						continue
-					} else if data != "" {
+					} else if receivedCandidates == nil {
 						if queriedContacts.Len() != 0 {
 							queriedContacts.Sort()
-							kademlia.network.SendStoreMessage(&queriedContacts.contacts[0], data) // Store data in closest queried contact which did not return the data
+							kademlia.network.SendStoreMessage(&queriedContacts.contacts[0], data.data, data.ttl) // Store data in closest queried contact which did not return the data
 						}
-						return data, nil
+						return data.data, nil
 					}
 					queriedContacts.Append([]Contact{contactShortlist.contacts[j]})
 				}
@@ -242,11 +249,11 @@ func (kademlia *Kademlia) LookupData(hash string) (string, []Contact) {
 	return "", contactShortlist.GetContacts(k)
 }
 
-func (kademlia *Kademlia) Store(data string) []Contact {
+func (kademlia *Kademlia) Store(data string, ttl int) []Contact {
 	var id KademliaID = sha1.Sum([]byte(data))
 	contacts := kademlia.LookupContact(&id)
 	for _, contact := range contacts {
-		kademlia.network.SendStoreMessage(&contact, data)
+		kademlia.network.SendStoreMessage(&contact, data, ttl)
 	}
 	return contacts
 }

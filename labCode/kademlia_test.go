@@ -10,7 +10,7 @@ import (
 func TestKademliaJoin(t *testing.T) {
 	kademlia := Kademlia{}
 	kademlia.Join()
-	kademlia.Store("lol")
+	kademlia.Store("lol", 999999999)
 	kademlia.LookupData("403926033d001b5279df37cbbe5287b7c7c267fa")
 	kademlia.LookupData("403926033d001b5279df37cbbe5287b7c7c267ff")
 	ch := make(chan int)

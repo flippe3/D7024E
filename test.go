@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -25,4 +26,13 @@ func main() {
 	q := sha1.Sum([]byte("hahaha"))
 	q2 := hex.EncodeToString(q[:])
 	fmt.Println(q2)
+
+	t := time.Now()
+	ttl := 2
+	time.Sleep(time.Duration(3e9))
+	if t.Add(time.Duration(ttl * 1e9)).After(time.Now()) {
+		fmt.Println("not expired")
+	} else {
+		fmt.Println("expired")
+	}
 }

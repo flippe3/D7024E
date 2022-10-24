@@ -11,8 +11,8 @@ func TestCliHandler(t *testing.T) {
 		t.Errorf("Received error for nil input")
 	}
 
-	if CliHandler([]string{"put"}, &Kademlia{}, exit) != "Expected exactly 1 argument for command 'put'" {
-		t.Errorf("Should print: Expected exactly 1 argument for command 'put'")
+	if CliHandler([]string{"put"}, &Kademlia{}, exit) != "Expected exactly 2 arguments for command 'put'" {
+		t.Errorf("Should print: Expected exactly 2 arguments for command 'put'")
 	}
 
 	if CliHandler([]string{"get"}, &Kademlia{}, exit) != "Expected exactly 1 argument for command 'get'" {

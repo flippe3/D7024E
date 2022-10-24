@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -26,11 +27,15 @@ func CliHandler(s []string, kademlia *Kademlia, exit chan int) string {
 	}
 	switch operation := s[0]; operation {
 	case "put":
-		if len(s) != 2 {
-			return "Expected exactly 1 argument for command 'put'"
+		if len(s) != 3 {
+			return "Expected exactly 2 arguments for command 'put'"
 		}
 		r := sha1.Sum([]byte(s[1]))
-		return "put " + s[1] + " sent store RPCs with hash: " + hex.EncodeToString(r[:]) + ", to contacts: " + ContactsString(kademlia.Store(s[1]))
+		ttl, err := strconv.Atoi(s[2])
+		if err != nil {
+			return "Expected second argument to be a ttl integer"
+		}
+		return "put " + s[1] + " " + s[2] + " sent store RPCs with hash: " + hex.EncodeToString(r[:]) + ", to contacts: " + ContactsString(kademlia.Store(s[1], ttl))
 	case "get":
 		if len(s) != 2 {
 			return "Expected exactly 1 argument for command 'get'"
