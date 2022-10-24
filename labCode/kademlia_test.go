@@ -8,9 +8,8 @@ import (
 )
 
 func TestKademliaJoin(t *testing.T) {
-	// kademlia := Kademlia{}
-	// fmt.Print(kademlia)
-	// kademlia.Join()
+	//kademlia := Kademlia{}
+	//kademlia.Join()
 }
 
 func TestKademliaFillBuckets(t *testing.T) {

@@ -61,7 +61,7 @@
 				
 				<option value="file2">labCode/contact.go (100.0%)</option>
 				
-				<option value="file3">labCode/kademlia.go (33.8%)</option>
+				<option value="file3">labCode/kademlia.go (42.6%)</option>
 				
 				<option value="file4">labCode/kademliaid.go (100.0%)</option>
 				
@@ -351,7 +351,7 @@ type Kademlia struct {
 // Functions in this file are iterative
 
 // j
-func (kademlia *Kademlia) Join() <span class="cov0" title="0">{
+func (kademlia *Kademlia) Join() <span class="cov8" title="1">{
         myIP := GetMyIP()
         myKademliaID := NewRandomKademliaID()
         fmt.Println("Generating new kademlia ID", myKademliaID, "for ip: ", myIP)
@@ -359,13 +359,13 @@ func (kademlia *Kademlia) Join() <span class="cov0" title="0">{
         kademlia.network = &amp;Network{routingTable: routingTable}
 
         slice := strings.Split(myIP, ".")
-        for i := 1; i &lt;= 255; i++ </span><span class="cov0" title="0">{
+        for i := 1; i &lt;= 255; i++ </span><span class="cov8" title="1">{
                 addr := slice[0] + "." + slice[1] + "." + slice[2] + "." + strconv.Itoa(i) + ":81"
-                if addr == myIP+":81" </span><span class="cov0" title="0">{
+                if addr == myIP+":81" </span><span class="cov8" title="1">{
                         continue</span>
                 }
-                <span class="cov0" title="0">conn, connErr := net.DialTimeout("tcp", addr, 1e6) // TTL: 1 ms
-                if connErr != nil </span><span class="cov0" title="0">{
+                <span class="cov8" title="1">conn, connErr := net.DialTimeout("tcp", addr, 1e6) // TTL: 1 ms
+                if connErr != nil </span><span class="cov8" title="1">{
                         continue</span>
                 } else<span class="cov0" title="0"> {
                         conn.Write([]byte("j,"))
