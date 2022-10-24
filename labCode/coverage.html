@@ -57,17 +57,17 @@
 				
 				<option value="file0">labCode/bucket.go (100.0%)</option>
 				
-				<option value="file1">labCode/cli.go (67.9%)</option>
+				<option value="file1">labCode/cli.go (38.8%)</option>
 				
 				<option value="file2">labCode/contact.go (100.0%)</option>
 				
-				<option value="file3">labCode/kademlia.go (91.9%)</option>
+				<option value="file3">labCode/kademlia.go (77.4%)</option>
 				
 				<option value="file4">labCode/kademliaid.go (100.0%)</option>
 				
 				<option value="file5">labCode/main.go (41.7%)</option>
 				
-				<option value="file6">labCode/network.go (58.7%)</option>
+				<option value="file6">labCode/network.go (54.4%)</option>
 				
 				<option value="file7">labCode/network_mock.go (100.0%)</option>
 				
@@ -177,11 +177,11 @@ func CliParser(kademlia *Kademlia, exit chan int) <span class="cov8" title="1">{
         for </span><span class="cov8" title="1">{
                 fmt.Print("&gt;")
                 read, _ := reader.ReadString('\n')
-                fmt.Println(CliHandler(strings.Fields(read), kademlia, exit))
+                fmt.Println(CliHandler(strings.Fields(read), kademlia, exit, reader))
         }</span>
 }
 
-func CliHandler(s []string, kademlia *Kademlia, exit chan int) string <span class="cov8" title="1">{
+func CliHandler(s []string, kademlia *Kademlia, exit chan int, reader *bufio.Reader) string <span class="cov8" title="1">{
         if len(s) == 0 </span><span class="cov8" title="1">{
                 return ""
         }</span>
@@ -203,8 +203,8 @@ func CliHandler(s []string, kademlia *Kademlia, exit chan int) string <span clas
                         return "Argument provided to get is not a SHA-1 hash"
                 }</span>
                 <span class="cov0" title="0">data, contacts := kademlia.LookupData(s[1])
-                if data != "" </span><span class="cov0" title="0">{
-                        return "get " + s[1] + " found the data: " + data
+                if data.data != "" </span><span class="cov0" title="0">{
+                        return "get " + s[1] + " found the data: " + data.data
                 }</span>
                 <span class="cov0" title="0">return "get " + s[1] + " did not find the data.\n 'get' found the contactsFound contacts: " + ContactsString(contacts)</span>
         case "exit":<span class="cov8" title="1">
@@ -214,8 +214,35 @@ func CliHandler(s []string, kademlia *Kademlia, exit chan int) string <span clas
                         exit &lt;- 0
                         return ""
                 }</span>
+        case "refresh":<span class="cov0" title="0">
+                if len(s) != 2 </span><span class="cov0" title="0">{
+                        return "Expected exactly 1 argument for command 'refresh'"
+                }</span> else<span class="cov0" title="0"> if len(s[1]) != 40 </span><span class="cov0" title="0">{
+                        return "Argument provided to get is not a SHA-1 hash"
+                }</span>
+                <span class="cov0" title="0">ch := make(chan int)
+                kademlia.refreshMap[s[1]] = ch
+                go kademlia.Refresh(s[1], ch)
+                fmt.Println("Refreshing " + s[1])
+                for </span><span class="cov0" title="0">{
+                        fmt.Print("&gt;")
+                        read, _ := reader.ReadString('\n')
+                        fmt.Println(CliHandler(strings.Fields(read), kademlia, exit, reader))
+                }</span>
+        case "forget":<span class="cov0" title="0">
+                if len(s) != 2 </span><span class="cov0" title="0">{
+                        return "Expected exactly 1 argument for command 'forget'"
+                }</span> else<span class="cov0" title="0"> if len(s[1]) != 40 </span><span class="cov0" title="0">{
+                        return "Argument provided to get is not a SHA-1 hash"
+                }</span>
+                <span class="cov0" title="0">ch, ok := kademlia.refreshMap[s[1]]
+                if ok </span><span class="cov0" title="0">{
+                        ch &lt;- 0
+                        return "Forgot the data with hash: " + s[1]
+                }</span>
+                <span class="cov0" title="0">return "Not refreshing any data with hash: " + s[1]</span>
         default:<span class="cov8" title="1">
-                return "operation: " + operation + " not found"</span>
+                return "Operation: " + operation + " not found"</span>
         }
 }
 </pre>
@@ -349,15 +376,16 @@ import (
 
 const k int = 4
 
+type Kademlia struct {
+        network    *Network
+        dataMap    map[string]Object
+        refreshMap map[string]chan int
+}
+
 type Object struct {
         data        string
         ttl         int
         storageTime time.Time
-}
-
-type Kademlia struct {
-        network *Network
-        dataMap map[string]Object
 }
 
 // Functions in this file are iterative
@@ -389,12 +417,9 @@ func (kademlia *Kademlia) Join() <span class="cov8" title="1">{
 
                         routingTable.AddContact(NewContact(NewKademliaID(bArr[0]), bArr[1]))
                         kademlia.LookupContact(routingTable.me.ID)
-                        fmt.Println("Calculated the following kademliaIDs to look up when filling buckets: ")
+                        //fmt.Println("Calculated the following kademliaIDs to look up when filling buckets: ")
                         idList := kademlia.FillBuckets()
-                        for _, id := range idList </span><span class="cov8" title="1">{
-                                fmt.Println(id.String())
-                        }</span>
-                        <span class="cov8" title="1">for _, id := range idList </span><span class="cov8" title="1">{
+                        for _, id := range idList </span><span class="cov0" title="0">{
                                 kademlia.LookupContact(&amp;id)
                         }</span>
                         <span class="cov8" title="1">return</span>
@@ -485,13 +510,13 @@ func Xor(data1 []byte, data2 []byte) []byte <span class="cov8" title="1">{
 func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact <span class="cov8" title="1">{
         queriedContacts := ContactCandidates{contacts: []Contact{}}
         contactShortlist := ContactCandidates{contacts: kademlia.network.routingTable.FindClosestContacts(target, k)}
-        fmt.Println("Closest contacts in own routing table: ", ContactsString(contactShortlist.GetContacts(k)))
+        //fmt.Println("Closest contacts in own routing table: ", ContactsString(contactShortlist.GetContacts(k)))
         for i := 0; i &lt; k; i++ </span><span class="cov8" title="1">{
                 if contactShortlist.Len() &gt; i &amp;&amp; !queriedContacts.Contains(&amp;contactShortlist.contacts[i]) </span><span class="cov8" title="1">{
-                        fmt.Println("Probing contact: ", contactShortlist.contacts[i].String())
+                        //fmt.Println("Probing contact: ", contactShortlist.contacts[i].String())
                         receivedCandidates, err := kademlia.network.SendFindContactMessage(&amp;contactShortlist.contacts[i], target)
-                        if err != nil </span><span class="cov8" title="1">{
-                                fmt.Println("1No response from ", contactShortlist.contacts[i].String())
+                        if err != nil </span><span class="cov0" title="0">{
+                                //fmt.Println("1No response from ", contactShortlist.contacts[i].String())
                                 contactShortlist = *contactShortlist.Remove(i)
                                 i--
                                 continue</span>
@@ -500,14 +525,14 @@ func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact <span clas
                         kademlia.HandleResponse(&amp;queriedContacts, contactShortlist.contacts[i], receivedCandidates, &amp;contactShortlist, target)
                         i = -1
                         if closestBefore.ID.Equals(contactShortlist.contacts[0].ID) </span><span class="cov8" title="1">{
-                                fmt.Println("Did not find a closer contact")
+                                //fmt.Println("Did not find a closer contact")
                                 for j := 0; j &lt; k &amp;&amp; contactShortlist.Len() &gt; j; j++ </span><span class="cov8" title="1">{ // Probe k closest not already probed
                                         if queriedContacts.Contains(&amp;contactShortlist.contacts[j]) </span><span class="cov8" title="1">{
                                                 continue</span>
                                         } else<span class="cov8" title="1"> if kademlia.network.SendPingMessage(&amp;contactShortlist.contacts[j]) </span><span class="cov8" title="1">{
                                                 queriedContacts.Append([]Contact{contactShortlist.contacts[j]})
-                                        }</span> else<span class="cov8" title="1"> {
-                                                fmt.Println("2No response from ", contactShortlist.contacts[j].String())
+                                        }</span> else<span class="cov0" title="0"> {
+                                                //fmt.Println("2No response from ", contactShortlist.contacts[j].String())
                                                 contactShortlist = *contactShortlist.Remove(j)
                                                 j--
                                         }</span>
@@ -516,7 +541,7 @@ func (kademlia *Kademlia) LookupContact(target *KademliaID) []Contact <span clas
                         }
                 }
         }
-        <span class="cov8" title="1">return contactShortlist.GetContacts(k)</span>
+        <span class="cov0" title="0">return contactShortlist.GetContacts(k)</span>
 }
 
 // LookupContact helper
@@ -531,20 +556,20 @@ func (kademlia *Kademlia) HandleResponse(queriedContacts *ContactCandidates, que
                         contactShortlist.Append(receivedCandidates[i : i+1])
                 }</span>
         }
-        <span class="cov8" title="1">contactShortlist.Sort()
-        fmt.Println("Received contactcandidates: ", ContactsString(receivedCandidates), "\ncontactShortlist: ", contactShortlist.String(), "\nqueriedContacts: ", queriedContacts.String())</span>
+        <span class="cov8" title="1">contactShortlist.Sort()</span>
+        //fmt.Println("Received contactcandidates: ", ContactsString(receivedCandidates), "\ncontactShortlist: ", contactShortlist.String(), "\nqueriedContacts: ", queriedContacts.String())
 }
 
-func (kademlia *Kademlia) LookupData(hash string) (string, []Contact) <span class="cov8" title="1">{
+func (kademlia *Kademlia) LookupData(hash string) (Object, []Contact) <span class="cov8" title="1">{
         queriedContacts := ContactCandidates{contacts: []Contact{}}
         contactShortlist := ContactCandidates{contacts: kademlia.network.routingTable.FindClosestContacts(NewKademliaID(hash), k)}
-        fmt.Println("Closest contacts in own routing table: ", ContactsString(contactShortlist.GetContacts(k)))
+        //fmt.Println("Closest contacts in own routing table: ", ContactsString(contactShortlist.GetContacts(k)))
         for i := 0; i &lt; k; i++ </span><span class="cov8" title="1">{
                 if contactShortlist.Len() &gt; i &amp;&amp; !queriedContacts.Contains(&amp;contactShortlist.contacts[i]) </span><span class="cov8" title="1">{
-                        fmt.Println("Probing contact: ", contactShortlist.contacts[i].String())
+                        //fmt.Println("Probing contact: ", contactShortlist.contacts[i].String())
                         data, receivedCandidates, err := kademlia.network.SendFindDataMessage(&amp;contactShortlist.contacts[i], hash)
                         if err != nil </span><span class="cov0" title="0">{
-                                fmt.Println("8No response from ", contactShortlist.contacts[i].String())
+                                //fmt.Println("8No response from ", contactShortlist.contacts[i].String())
                                 contactShortlist = *contactShortlist.Remove(i)
                                 i--
                                 continue</span>
@@ -553,20 +578,20 @@ func (kademlia *Kademlia) LookupData(hash string) (string, []Contact) <span clas
                                         queriedContacts.Sort()
                                         kademlia.network.SendStoreMessage(&amp;queriedContacts.contacts[0], data.data, data.ttl) // Store data in closest queried contact which did not return the data
                                 }</span>
-                                <span class="cov8" title="1">return data.data, nil</span>
+                                <span class="cov8" title="1">return data, nil</span>
                         }
                         <span class="cov8" title="1">closestBefore := contactShortlist.contacts[0]
                         kademlia.HandleResponse(&amp;queriedContacts, contactShortlist.contacts[i], receivedCandidates, &amp;contactShortlist, NewKademliaID(hash))
                         i = -1
                         if closestBefore.ID.Equals(contactShortlist.contacts[0].ID) </span><span class="cov8" title="1">{
-                                fmt.Println("Did not find a closer contact")
+                                //fmt.Println("Did not find a closer contact")
                                 for j := 0; j &lt; k &amp;&amp; contactShortlist.Len() &gt; j; j++ </span><span class="cov8" title="1">{ // Probe k closest not already probed
                                         if queriedContacts.Contains(&amp;contactShortlist.contacts[j]) </span><span class="cov8" title="1">{
                                                 continue</span>
                                         }
                                         <span class="cov8" title="1">data, _, err := kademlia.network.SendFindDataMessage(&amp;contactShortlist.contacts[j], hash)
-                                        if err != nil </span><span class="cov8" title="1">{
-                                                fmt.Println("9No response from ", contactShortlist.contacts[j].String())
+                                        if err != nil </span><span class="cov0" title="0">{
+                                                //fmt.Println("9No response from ", contactShortlist.contacts[j].String())
                                                 contactShortlist = *contactShortlist.Remove(j)
                                                 j--
                                                 continue</span>
@@ -575,15 +600,15 @@ func (kademlia *Kademlia) LookupData(hash string) (string, []Contact) <span clas
                                                         queriedContacts.Sort()
                                                         kademlia.network.SendStoreMessage(&amp;queriedContacts.contacts[0], data.data, data.ttl) // Store data in closest queried contact which did not return the data
                                                 }</span>
-                                                <span class="cov0" title="0">return data.data, nil</span>
+                                                <span class="cov0" title="0">return data, nil</span>
                                         }
                                         <span class="cov8" title="1">queriedContacts.Append([]Contact{contactShortlist.contacts[j]})</span>
                                 }
-                                <span class="cov8" title="1">return "", contactShortlist.GetContacts(k)</span>
+                                <span class="cov8" title="1">return Object{data: ""}, contactShortlist.GetContacts(k)</span>
                         }
                 }
         }
-        <span class="cov0" title="0">return "", contactShortlist.GetContacts(k)</span>
+        <span class="cov0" title="0">return Object{data: ""}, contactShortlist.GetContacts(k)</span>
 }
 
 func (kademlia *Kademlia) Store(data string, ttl int) []Contact <span class="cov8" title="1">{
@@ -593,6 +618,28 @@ func (kademlia *Kademlia) Store(data string, ttl int) []Contact <span class="cov
                 kademlia.network.SendStoreMessage(&amp;contact, data, ttl)
         }</span>
         <span class="cov8" title="1">return contacts</span>
+}
+
+func (kademlia *Kademlia) Refresh(data string, ch chan int) <span class="cov0" title="0">{
+        obj, _ := kademlia.LookupData(data)
+        if obj.data == "" </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov0" title="0">refreshTime := time.Now().Add(time.Duration((obj.ttl * 1e9) - 5e8))
+        for </span><span class="cov0" title="0">{
+                select </span>{
+                case &lt;-ch:<span class="cov0" title="0">
+                        return</span>
+                default:<span class="cov0" title="0">
+                        if time.Now().After(refreshTime) </span><span class="cov0" title="0">{
+                                obj, _ = kademlia.LookupData(data)
+                                if obj.data == "" </span><span class="cov0" title="0">{
+                                        return
+                                }</span>
+                                <span class="cov0" title="0">refreshTime = time.Now().Add(time.Duration((obj.ttl * 1e9) - 5e8))</span>
+                        }
+                }
+        }
 }
 </pre>
 		
@@ -681,7 +728,7 @@ import (
 )
 
 func main() <span class="cov0" title="0">{
-        kademlia := Kademlia{dataMap: make(map[string]Object)}
+        kademlia := Kademlia{dataMap: make(map[string]Object), refreshMap: make(map[string]chan int)}
         kademlia.Join()
         exit := make(chan int)
         go CliParser(&amp;kademlia, exit)
@@ -777,7 +824,7 @@ func (network *Network) HandleConnection(conn net.Conn, dataMap map[string]Objec
                 data, ok := dataMap[inp[3]]
                 if ok </span><span class="cov0" title="0">{
                         if data.storageTime.Add(time.Duration(data.ttl * 1e9)).After(time.Now()) </span><span class="cov0" title="0">{
-                                data.storageTime = time.Now()
+                                dataMap[inp[3]] = Object{data: data.data, ttl: data.ttl, storageTime: time.Now()}
                                 conn.Write([]byte("d," + data.data + "," + strconv.Itoa(data.ttl) + ","))
                                 return
                         }</span>
@@ -802,7 +849,7 @@ func (network *Network) HandleConnection(conn net.Conn, dataMap map[string]Objec
 
 // Checks if contact should be added to the bucket
 func (network *Network) CheckAliveAddContact(contact Contact) <span class="cov8" title="1">{
-        fmt.Println("CheckAliveAddContact: ", contact.String())
+        //fmt.Println("CheckAliveAddContact: ", contact.String())
         bucketIndex := network.routingTable.getBucketIndex(contact.ID)
         bucket := network.routingTable.buckets[bucketIndex]
         if bucket.Contains(contact) </span><span class="cov8" title="1">{
@@ -824,7 +871,7 @@ func (network *Network) CheckAliveAddContact(contact Contact) <span class="cov8"
 // Returns true if a response is received within the TTL (1 ms)
 func (network *Network) SendPingMessage(contact *Contact) (response bool) <span class="cov8" title="1">{
         conn, connErr := net.DialTimeout("tcp", contact.Address+":81", 1e6) // TTL: 1 ms
-        if connErr != nil </span><span class="cov8" title="1">{
+        if connErr != nil </span><span class="cov0" title="0">{
                 return false
         }</span> else<span class="cov8" title="1"> {
                 network.CheckAliveAddContact(*contact) // Update routing table
@@ -837,7 +884,7 @@ func (network *Network) SendPingMessage(contact *Contact) (response bool) <span 
 // Returns sorted list of contacts
 func (network *Network) SendFindContactMessage(contact *Contact, target *KademliaID) ([]Contact, error) <span class="cov8" title="1">{
         conn, connErr := net.DialTimeout("tcp", contact.Address+":81", 1e6) // TTL: 1 ms
-        if connErr != nil </span><span class="cov8" title="1">{
+        if connErr != nil </span><span class="cov0" title="0">{
                 return nil, fmt.Errorf("3No response from " + contact.String())
         }</span> else<span class="cov8" title="1"> {
                 network.CheckAliveAddContact(*contact) // Update routing table
@@ -850,15 +897,15 @@ func (network *Network) SendFindContactMessage(contact *Contact, target *Kademli
                 for i := 0; i &lt; len(bArr)-1; i = i + 2 </span><span class="cov8" title="1">{
                         contacts = append(contacts, NewContact(NewKademliaID(bArr[i]), bArr[i+1]))
                 }</span>
-                <span class="cov8" title="1">fmt.Println("SendFindContactMessage to ", contact.String(), "with target: ", target.String(), ", found", len(contacts), "contacts: ", ContactsString(contacts))
-                return contacts, nil</span>
+                //fmt.Println("SendFindContactMessage to ", contact.String(), "with target: ", target.String(), ", found", len(contacts), "contacts: ", ContactsString(contacts))
+                <span class="cov8" title="1">return contacts, nil</span>
         }
 }
 
 // d (Has to be comma seperated) (string, []Contact, error)
 func (network *Network) SendFindDataMessage(contact *Contact, hash string) (Object, []Contact, error) <span class="cov8" title="1">{
         conn, connErr := net.DialTimeout("tcp", contact.Address+":81", 1e6) // TTL: 1 ms
-        if connErr != nil </span><span class="cov8" title="1">{
+        if connErr != nil </span><span class="cov0" title="0">{
                 return Object{data: ""}, nil, fmt.Errorf("4No response from " + contact.String())
         }</span> else<span class="cov8" title="1"> {
                 network.CheckAliveAddContact(*contact) // Update routing table
@@ -867,26 +914,25 @@ func (network *Network) SendFindDataMessage(contact *Contact, hash string) (Obje
                 conn.Read(b)
                 conn.Close()
                 bArr := strings.Split(string(b), ",")
-                fmt.Println(bArr[0])
                 if bArr[0] == "d" </span><span class="cov8" title="1">{
-                        fmt.Println("SendFindDataMessage to ", contact.String(), "with target: ", hash, ", found the data ", bArr[1])
-                        ttl, _ := strconv.Atoi(bArr[1])
+                        //fmt.Println("SendFindDataMessage to ", contact.String(), "with target: ", hash, ", found the data ", bArr[1])
+                        ttl, _ := strconv.Atoi((bArr[2]))
                         return Object{data: bArr[1], ttl: ttl}, nil, nil
                 }</span>
                 <span class="cov8" title="1">contacts := []Contact{}
                 for i := 0; i &lt; len(bArr)-1; i = i + 2 </span><span class="cov8" title="1">{
                         contacts = append(contacts, NewContact(NewKademliaID(bArr[i]), bArr[i+1]))
                 }</span>
-                <span class="cov8" title="1">fmt.Println("SendFindDataMessage to ", contact.String(), "with target: ", hash, ", found", len(contacts), "contacts: ", ContactsString(contacts))
-                return Object{data: ""}, contacts, nil</span>
+                //fmt.Println("SendFindDataMessage to ", contact.String(), "with target: ", hash, ", found", len(contacts), "contacts: ", ContactsString(contacts))
+                <span class="cov8" title="1">return Object{data: ""}, contacts, nil</span>
         }
 }
 
 // s
 func (network *Network) SendStoreMessage(contact *Contact, data string, ttl int) <span class="cov8" title="1">{
         conn, connErr := net.DialTimeout("tcp", contact.Address+":81", 1e6) // TTL: 1 ms
-        if connErr != nil </span><span class="cov0" title="0">{
-                fmt.Println("5No response from " + contact.String())
+        if connErr != nil </span>{<span class="cov0" title="0">
+                //fmt.Println("5No response from " + contact.String())
         }</span> else<span class="cov8" title="1"> {
                 network.CheckAliveAddContact(*contact) // Update routing table
                 conn.Write([]byte("s," + network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + "," + data + "," + strconv.Itoa(ttl) + ","))

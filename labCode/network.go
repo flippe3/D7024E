@@ -72,7 +72,7 @@ func (network *Network) HandleConnection(conn net.Conn, dataMap map[string]Objec
 		data, ok := dataMap[inp[3]]
 		if ok {
 			if data.storageTime.Add(time.Duration(data.ttl * 1e9)).After(time.Now()) {
-				data.storageTime = time.Now()
+				dataMap[inp[3]] = Object{data: data.data, ttl: data.ttl, storageTime: time.Now()}
 				conn.Write([]byte("d," + data.data + "," + strconv.Itoa(data.ttl) + ","))
 				return
 			}
@@ -97,7 +97,7 @@ func (network *Network) HandleConnection(conn net.Conn, dataMap map[string]Objec
 
 // Checks if contact should be added to the bucket
 func (network *Network) CheckAliveAddContact(contact Contact) {
-	fmt.Println("CheckAliveAddContact: ", contact.String())
+	//fmt.Println("CheckAliveAddContact: ", contact.String())
 	bucketIndex := network.routingTable.getBucketIndex(contact.ID)
 	bucket := network.routingTable.buckets[bucketIndex]
 	if bucket.Contains(contact) {
@@ -145,7 +145,7 @@ func (network *Network) SendFindContactMessage(contact *Contact, target *Kademli
 		for i := 0; i < len(bArr)-1; i = i + 2 {
 			contacts = append(contacts, NewContact(NewKademliaID(bArr[i]), bArr[i+1]))
 		}
-		fmt.Println("SendFindContactMessage to ", contact.String(), "with target: ", target.String(), ", found", len(contacts), "contacts: ", ContactsString(contacts))
+		//fmt.Println("SendFindContactMessage to ", contact.String(), "with target: ", target.String(), ", found", len(contacts), "contacts: ", ContactsString(contacts))
 		return contacts, nil
 	}
 }
@@ -162,17 +162,16 @@ func (network *Network) SendFindDataMessage(contact *Contact, hash string) (Obje
 		conn.Read(b)
 		conn.Close()
 		bArr := strings.Split(string(b), ",")
-		fmt.Println(bArr[0])
 		if bArr[0] == "d" {
-			fmt.Println("SendFindDataMessage to ", contact.String(), "with target: ", hash, ", found the data ", bArr[1])
-			ttl, _ := strconv.Atoi(bArr[1])
+			//fmt.Println("SendFindDataMessage to ", contact.String(), "with target: ", hash, ", found the data ", bArr[1])
+			ttl, _ := strconv.Atoi((bArr[2]))
 			return Object{data: bArr[1], ttl: ttl}, nil, nil
 		}
 		contacts := []Contact{}
 		for i := 0; i < len(bArr)-1; i = i + 2 {
 			contacts = append(contacts, NewContact(NewKademliaID(bArr[i]), bArr[i+1]))
 		}
-		fmt.Println("SendFindDataMessage to ", contact.String(), "with target: ", hash, ", found", len(contacts), "contacts: ", ContactsString(contacts))
+		//fmt.Println("SendFindDataMessage to ", contact.String(), "with target: ", hash, ", found", len(contacts), "contacts: ", ContactsString(contacts))
 		return Object{data: ""}, contacts, nil
 	}
 }
@@ -181,7 +180,7 @@ func (network *Network) SendFindDataMessage(contact *Contact, hash string) (Obje
 func (network *Network) SendStoreMessage(contact *Contact, data string, ttl int) {
 	conn, connErr := net.DialTimeout("tcp", contact.Address+":81", 1e6) // TTL: 1 ms
 	if connErr != nil {
-		fmt.Println("5No response from " + contact.String())
+		//fmt.Println("5No response from " + contact.String())
 	} else {
 		network.CheckAliveAddContact(*contact) // Update routing table
 		conn.Write([]byte("s," + network.routingTable.me.ID.String() + "," + network.routingTable.me.Address + "," + data + "," + strconv.Itoa(ttl) + ","))
