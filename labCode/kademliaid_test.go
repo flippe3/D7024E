@@ -11,7 +11,7 @@ func TestKademliaidRandomNewKademliaID(t *testing.T) {
 	if len(randomIdOne) != IDLength {
 		t.Errorf("RandomNewKademliaId Wrong Length: %s", randomIdOne)
 	}
-	if randomIdOne == randomIdTwo {
+	if randomIdOne.Equals(randomIdTwo) {
 		t.Errorf("Randomization not working id1: %s == id2: %s", randomIdOne, randomIdTwo)
 	}
 }
