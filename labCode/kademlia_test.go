@@ -1,23 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"math/rand"
 	"testing"
 	"time"
 )
-
-func TestKademliaJoin(t *testing.T) {
-	kademlia := Kademlia{}
-	kademlia.Join()
-	kademlia.Store("lol", 999999999)
-	kademlia.LookupData("403926033d001b5279df37cbbe5287b7c7c267fa")
-	kademlia.LookupData("403926033d001b5279df37cbbe5287b7c7c267ff")
-	ch := make(chan int)
-	go RunKademlia(&kademlia, ch)
-	ch <- 0
-	go CliParser(&kademlia, ch)
-}
 
 func TestKademliaFillBuckets(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
@@ -78,4 +67,23 @@ func TestKademliaHandleResponse(t *testing.T) {
 	if !queriedContacts.contacts[0].ID.Equals(NewKademliaID("cccccccccccccccccccccccccccccccccccccccc")) {
 		t.Errorf("index 0 of queriedContacts did not have expected kademliaID cccccccccccccccccccccccccccccccccccccccc, instead got kademlia ID %s", queriedContacts.contacts[0].ID.String())
 	}
+}
+
+func TestKademliaJoin(t *testing.T) {
+	kademlia := Kademlia{dataMap: make(map[string]Object), refreshMap: make(map[string]chan int)}
+	kademlia.Join()
+	kademlia.Store("lol", 999999999)
+	kademlia.LookupData("403926033d001b5279df37cbbe5287b7c7c267fa")
+	kademlia.LookupData("403926033d001b5279df37cbbe5287b7c7c267ff")
+	ch := make(chan int)
+	go RunKademlia(&kademlia, ch)
+	ch <- 0
+	ch2 := make(chan int)
+	go CliParser(&kademlia, ch2)
+	exit := make(chan int)
+	go CliHandler([]string{"put", "xd"}, &kademlia, exit, &bufio.Reader{})
+	go CliHandler([]string{"refresh", "xd"}, &kademlia, exit, &bufio.Reader{})
+	go CliHandler([]string{"forget", "7782391677c36f0f0e77363c7ef182e4e75e7669"}, &kademlia, exit, &bufio.Reader{})
+	go CliHandler([]string{"refresh", "a"}, &kademlia, exit, &bufio.Reader{})
+	go CliHandler([]string{"forget", "ffffffffffffffffffffffffffffffffffffffff"}, &kademlia, exit, &bufio.Reader{})
 }
