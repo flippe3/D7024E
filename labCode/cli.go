@@ -57,12 +57,12 @@ func CliHandler(s []string, kademlia *Kademlia, exit chan int, reader *bufio.Rea
 	case "refresh":
 		if len(s) != 2 {
 			return "Expected exactly 1 argument for command 'refresh'"
-		} else if len(s[1]) != 40 {
-			return "Argument provided to get is not a SHA-1 hash"
 		}
+		r := sha1.Sum([]byte(s[1]))
+		hash := hex.EncodeToString(r[:])
 		ch := make(chan int)
-		kademlia.refreshMap[s[1]] = ch
-		go kademlia.Refresh(s[1], ch)
+		kademlia.refreshMap[hash] = ch
+		go kademlia.Refresh(hash, ch)
 		fmt.Println("Refreshing " + s[1])
 		for {
 			fmt.Print(">")
@@ -78,6 +78,7 @@ func CliHandler(s []string, kademlia *Kademlia, exit chan int, reader *bufio.Rea
 		ch, ok := kademlia.refreshMap[s[1]]
 		if ok {
 			ch <- 0
+			delete(kademlia.refreshMap, s[1])
 			return "Forgot the data with hash: " + s[1]
 		}
 		return "Not refreshing any data with hash: " + s[1]

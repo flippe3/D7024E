@@ -259,6 +259,9 @@ func (kademlia *Kademlia) Store(data string, ttl int) []Contact {
 func (kademlia *Kademlia) Refresh(data string, ch chan int) {
 	obj, _ := kademlia.LookupData(data)
 	if obj.data == "" {
+		fmt.Println("Failed to refresh data with hash: " + data)
+		fmt.Print(">")
+		delete(kademlia.refreshMap, data)
 		return
 	}
 	refreshTime := time.Now().Add(time.Duration((obj.ttl * 1e9) - 5e8))
@@ -270,6 +273,9 @@ func (kademlia *Kademlia) Refresh(data string, ch chan int) {
 			if time.Now().After(refreshTime) {
 				obj, _ = kademlia.LookupData(data)
 				if obj.data == "" {
+					fmt.Println("Failed to refresh data with hash: " + data)
+					fmt.Print(">")
+					delete(kademlia.refreshMap, data)
 					return
 				}
 				refreshTime = time.Now().Add(time.Duration((obj.ttl * 1e9) - 5e8))
