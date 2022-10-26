@@ -6,6 +6,8 @@ WORKDIR /home
 
 COPY labCode/ .
 
+RUN apk update && apk add curl
+
 RUN go mod download
 
 RUN go build -o output *.go

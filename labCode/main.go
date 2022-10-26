@@ -9,6 +9,7 @@ func main() {
 	kademlia.Join()
 	exit := make(chan int)
 	go CliParser(&kademlia, exit)
+	go handleRequests(&kademlia)
 	RunKademlia(&kademlia, exit)
 }
 
